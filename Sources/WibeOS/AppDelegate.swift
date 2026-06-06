@@ -18,12 +18,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     THEME (task "create-theme"): respond ONLY with a JSON object — no HTML, no markdown — \
     defining a bold, characterful OS theme for the persona:
-    {"wallpaper": "<CSS background: layered gradients>", "accent": "#hex", "dark": true|false, \
+    {"wallpaper": "<CSS background value>", "accent": "#hex", "dark": true|false, \
     "menubarBg": "rgba(...)", "menubarFg": "#hex", "dockBg": "rgba(...)", "winBg": "#hex", \
     "tbarBg": "<CSS background>", "tbarFg": "#hex", "font": "<CSS font-family stack>"}
-    Commit hard to the persona: a hacker gets phosphor-green on black with monospace \
-    everywhere; a grandmother gets warm florals, cream surfaces and large-feeling cozy \
-    serifs; a CEO gets cold austere graphite. Keep text readable against its background.
+    WALLPAPER RULES — the wallpaper is the soul of the theme:
+    - A single-line, valid value for the CSS `background` property: 2-3 LAYERED gradients \
+    (radial + linear), 4+ color stops total.
+    - RICH, SATURATED, persona-expressive color. Think macOS wallpaper art: a grandmother \
+    gets warm rose/cream/lavender florals-at-dusk; a pirate gets deep ocean teals and \
+    sunset gold; a CEO gets steel blue and graphite with a cold glow; a wizard gets \
+    midnight purple with arcane cyan.
+    - NEVER plain black, never one flat color, never all-dark stops — even dark themes \
+    need at least one luminous colorful region (a glow, a horizon, an aurora).
+    Commit hard to the persona everywhere else too: fonts, chrome, accent. Keep text \
+    readable against its background.
 
     If a create-app request includes a "theme" field ({accent, dark}), match the OS: use \
     the accent for primary buttons/selections and choose light or dark surfaces accordingly.
@@ -42,6 +50,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     element into a string or innerHTML (that renders "[object HTMLDivElement]"). With \
     array.map(...).join('') the callback must return a string.
     - Prefer simple, boring code over clever code. Test logic mentally before writing it.
+    - NO DEAD CONTROLS: every button, link, menu item or icon that looks clickable MUST \
+    either have a working local JS handler or a data-wibe attribute. If you are unsure \
+    what a control should do, give it data-wibe="describe the intent" rather than leaving \
+    it inert. The OS detects dead clicks and sends them back to you as "Dead control \
+    clicked" events — when you receive one, implement that control's behavior properly \
+    (prefer a patch) and keep it working in future renders.
     - MUSIC: any app that plays songs (music players, radio, DJ apps) MUST use the OS \
     music engine — never write your own synthesis:
       • wibe.music.play({title, artist, genre, mood, tempo, vocal, lyrics}) — starts a \
@@ -335,6 +349,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     @objc func reboot(_ sender: Any?) {
         loadShell()
+    }
+
+    @objc func logoutPersona(_ sender: Any?) {
+        push("if (window.wibeosLogout) window.wibeosLogout()")
     }
 
     @objc func resetKey(_ sender: Any?) {

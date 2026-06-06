@@ -154,6 +154,13 @@
   .pav .pname { color: #fff; font-size: 14px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
   .pav .pdesc { color: rgba(255,255,255,.45); font-size: 11px; max-width: 140px;
     text-align: center; line-height: 1.3; }
+  .pav { position: relative; }
+  .pav .pdel { position: absolute; top: -6px; right: 6px; width: 22px; height: 22px;
+    border-radius: 50%; background: rgba(40,40,46,.9); color: #fff; font-size: 12px;
+    display: none; align-items: center; justify-content: center; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.3); }
+  .pav:hover .pdel { display: flex; }
+  .pav .pdel:hover { background: #c0392b; }
   .dlgbox textarea { width: 100%; padding: 7px 10px; font-size: 13px; border: 1px solid #ccc;
     border-radius: 7px; margin-bottom: 14px; resize: none; font-family: inherit;
     -webkit-user-select: text; user-select: text; }
@@ -202,6 +209,17 @@
     </div>
   </div>
 
+  <div class="sysdlg" id="introDlg" hidden>
+    <div class="dlgbox">
+      <p style="margin:0;color:#999">You are now…</p>
+      <div id="introEmoji" style="font-size:64px;margin:10px 0 2px"></div>
+      <h2 id="introName"></h2>
+      <p id="introDesc" style="color:#555;font-size:13px;line-height:1.5"></p>
+      <button class="alt" id="introRoll">🎲 Someone else</button>
+      <button id="introGo">Let's go</button>
+    </div>
+  </div>
+
   <div class="sysdlg" id="aboutDlg" hidden>
     <div class="dlgbox">
       <div style="font-size:48px"></div>
@@ -210,6 +228,7 @@
          Chip&nbsp;&nbsp;Imagination M∞<br>
          Memory&nbsp;&nbsp;Vibes, mostly<br>
          Apps&nbsp;&nbsp;0 real, ∞ possible</p>
+      <p id="aboutPersona" style="border-top:1px solid #ddd;padding-top:10px"></p>
       <button id="aboutOk">OK</button>
     </div>
   </div>
@@ -320,7 +339,41 @@
     wallpaper: "--wp", accent: "--accent", menubarBg: "--mb-bg", menubarFg: "--mb-fg",
     dockBg: "--dock-bg", winBg: "--win-bg", tbarBg: "--tbar-bg", tbarFg: "--tbar-fg", font: "--font"
   };
+  function validBg(v) {
+    var el = document.createElement("div");
+    el.style.background = "";
+    el.style.background = v;
+    return el.style.background !== "";
+  }
+  function wallpaperLooksBlack(v) {
+    var colors = String(v).match(/#[0-9a-f]{3,8}|rgba?\([^)]*\)/gi) || [];
+    if (!colors.length) return false;
+    var maxL = 0;
+    colors.forEach(function (c) {
+      var r, g, b;
+      if (c[0] === "#") {
+        var h = c.slice(1);
+        if (h.length === 3 || h.length === 4) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+        r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+      } else {
+        var m = c.match(/[\d.]+/g) || [0, 0, 0];
+        r = +m[0]; g = +m[1]; b = +m[2];
+      }
+      var l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (l > maxL) maxL = l;
+    });
+    return maxL < 0.16; // nothing even moderately bright anywhere in it
+  }
+  function fallbackWallpaper(accent) {
+    accent = accent || "#7b6cd9";
+    return "radial-gradient(1100px 750px at 75% 18%, color-mix(in srgb, " + accent + " 65%, #ffffff) 0%, transparent 60%)," +
+           "radial-gradient(900px 700px at 18% 82%, color-mix(in srgb, " + accent + " 50%, #ff5fa2) 0%, transparent 55%)," +
+           "linear-gradient(160deg, color-mix(in srgb, " + accent + " 40%, #15182f) 0%, color-mix(in srgb, " + accent + " 20%, #241636) 50%, #11142a 100%)";
+  }
   function applyTheme(t) {
+    if (t && (!t.wallpaper || !validBg(t.wallpaper) || wallpaperLooksBlack(t.wallpaper))) {
+      t.wallpaper = fallbackWallpaper(t.accent); // rescue black/broken wallpapers
+    }
     var r = document.documentElement.style;
     Object.keys(THEME_VARS).forEach(function (k) {
       if (t && typeof t[k] === "string" && t[k].length < 600) r.setProperty(THEME_VARS[k], t[k]);
@@ -330,7 +383,7 @@
   }
   function requestTheme(p, cb) {
     var g = { id: "g" + (state.nextId++), kind: "theme", app: "__theme__", buf: "",
-              win: null, raf: null, cb: cb,
+              pname: p.name, win: null, raf: null, cb: cb,
               history: [{ role: "user", content: JSON.stringify(
                 { task: "create-theme", name: p.name, persona: p.desc }) }] };
     state.gen[g.id] = g;
@@ -389,7 +442,8 @@
     "function inputs(){var o=[];document.querySelectorAll('input,textarea,select,[contenteditable]').forEach(function(i){" +
     "var v=(i.type==='checkbox'||i.type==='radio')?(i.checked?'checked':''):(i.value!==undefined&&i.value!==''?i.value:(i.getAttribute&&i.getAttribute('contenteditable')!==null?i.innerText:''));" +
     "if(v)o.push({el:describe(i),value:String(v).slice(0,500)});});return o;}" +
-    "function fire(action,target){parent.postMessage({wibe:'event',detail:{action:action,target:target,inputs:inputs()}},'*');}" +
+    "window.__wibeAct=0;function bump(){window.__wibeAct=Date.now();}" +
+    "function fire(action,target){bump();parent.postMessage({wibe:'event',detail:{action:action,target:target,inputs:inputs()}},'*');}" +
     "document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-wibe]');" +
     "if(!t)return;e.preventDefault();fire(t.getAttribute('data-wibe'),describe(t));},true);" +
     "document.addEventListener('keydown',function(e){if(e.key!=='Enter')return;" +
@@ -404,17 +458,32 @@
     "install:function(app,icon,hint){parent.postMessage({wibe:'install',app:app,icon:icon||'✨',hint:hint||''},'*');}};" +
     /* built-in, tested camera API so hallucinated apps can't get it wrong */
     "window.wibe.camera={_s:null," +
-    "start:function(video){return navigator.mediaDevices.getUserMedia({video:true}).then(function(s){" +
+    "start:function(video){bump();return navigator.mediaDevices.getUserMedia({video:true}).then(function(s){" +
     "window.wibe.camera._s=s;video.srcObject=s;video.muted=true;video.setAttribute('playsinline','');video.setAttribute('autoplay','');" +
     "return Promise.resolve(video.play()).catch(function(){}).then(function(){" +
     "return new Promise(function(res){if(video.videoWidth)return res(s);" +
     "video.addEventListener('loadedmetadata',function(){res(s);},{once:true});});});});}," +
-    "snap:function(video){if(!video||!video.videoWidth)return null;" +
+    "snap:function(video){bump();if(!video||!video.videoWidth)return null;" +
     "var c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;" +
     "c.getContext('2d').drawImage(video,0,0);return c.toDataURL('image/png');}," +
     "stop:function(){var s=window.wibe.camera._s;if(s){s.getTracks().forEach(function(t){t.stop();});window.wibe.camera._s=null;}}};" +
     "document.addEventListener('mousedown',function(){parent.postMessage({wibe:'focus'},'*');},true);" +
     "window.addEventListener('error',function(e){parent.postMessage({wibe:'jserror',message:String(e.message||'script error').slice(0,200)},'*');});" +
+    /* dead-click detector: clicks on interactive controls that change nothing
+       round-trip to the model as 'implement this control' events */
+    "var _mut=0;new MutationObserver(function(){_mut=Date.now();})" +
+    ".observe(document.documentElement,{subtree:true,childList:true,attributes:true,characterData:true});" +
+    "document.addEventListener('click',function(e){" +
+    "var a=e.target.closest&&e.target.closest('a[href]');if(a){var h=a.getAttribute('href');" +
+    "if(h==='#'||/^https?:/i.test(h))e.preventDefault();}},true);" +
+    "document.addEventListener('click',function(e){" +
+    "var t=e.target.closest&&e.target.closest(\"button,a,[role='button'],input[type='button'],input[type='submit'],.btn,[onclick]\");" +
+    "if(!t)return;if(t.closest('[data-wibe],[data-wibe-enter]'))return;" +
+    "var before=Date.now();var desc=describe(t);" +
+    "setTimeout(function(){" +
+    "if(_mut>before)return;if((window.__wibeAct||0)>before)return;" +
+    "fire('Dead control clicked: nothing happened. Implement the intended behavior of this control and re-render showing the result.',desc);" +
+    "},400);},false);" +
     /* WebKit creates AudioContexts suspended; auto-resume them on any user gesture */
     "var _AC=window.AudioContext||window.webkitAudioContext;" +
     "if(_AC){var _acs=[];var _P=function(){var c=new _AC();_acs.push(c);return c;};" +
@@ -756,8 +825,10 @@
     }
 
     window.wibe = window.wibe || {};
+    function act() { window.__wibeAct = Date.now(); } // audio counts as button activity
     window.wibe.music = {
       play: function (meta) {
+        act();
         ensure();
         if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
         st.song = buildSong(meta || {});
@@ -771,20 +842,24 @@
         return { bpm: st.song.bpm, genre: st.song.genre, key: st.song.minor ? 'minor' : 'major' };
       },
       pause: function () {
+        act();
         if (ctx) ctx.suspend();
         if (window.speechSynthesis) { try { window.speechSynthesis.pause(); } catch (e) {} }
       },
       resume: function () {
+        act();
         if (ctx) ctx.resume();
         if (window.speechSynthesis) { try { window.speechSynthesis.resume(); } catch (e) {} }
       },
       stop: function () {
+        act();
         st.playing = false;
         if (master && ctx) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
         if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
       },
       onLyric: null,
       setVolume: function (v) {
+        act();
         st.vol = Math.max(0, Math.min(1, +v || 0));
         if (master && ctx && st.playing) master.gain.setTargetAtTime(st.vol * 0.5, ctx.currentTime, 0.03);
       },
@@ -860,11 +935,13 @@
         delete state.gen[id];
         var th = null;
         try { th = JSON.parse(strip(p.buf).replace(/^[^{]*/, "").replace(/[^}]*$/, "")); } catch (e) {}
-        if (th) {
+        var current = state.persona && state.persona.name === p.pname; // persona may have been discarded
+        if (th && current) {
           applyTheme(th);
-          if (state.persona) { themes[state.persona.name] = th; savePrefs(); }
+          themes[p.pname] = th;
+          savePrefs();
         }
-        if (p.cb) p.cb();
+        if (p.cb && current) p.cb();
         pump();
         return;
       }
@@ -1309,9 +1386,23 @@
     var f = front();
     var appName = f ? f.app : "Finder";
     if (name === "apple") return [
-      { l: "About This wibe…", f: function () { $("aboutDlg").hidden = false; } },
+      { l: "About This wibe…", f: function () {
+          var ap = $("aboutPersona");
+          ap.innerHTML = state.persona
+            ? "Logged in as " + esc(state.persona.emoji) + " <b>" + esc(state.persona.name) + "</b><br>" +
+              '<span style="color:#888">' + esc(state.persona.desc) + "</span>"
+            : "";
+          $("aboutDlg").hidden = false;
+        } },
       { sep: 1 },
       { l: "Sleep", f: function () { $("sleepveil").hidden = false; } },
+      { l: "Re-imagine Theme", f: function () {
+          if (state.persona) {
+            delete themes[state.persona.name];
+            savePrefs();
+            requestTheme(state.persona, function () {});
+          }
+        } },
       { l: "Reboot wibeOS", f: function () { location.reload(); } },
       { sep: 1 },
       { l: "Log Out " + (state.persona ? state.persona.name : "") + "…", f: logout },
@@ -1400,6 +1491,20 @@
   document.addEventListener("click", hideDropdown);
   $("sleepveil").addEventListener("click", function () { $("sleepveil").hidden = true; });
   $("aboutOk").addEventListener("click", function () { $("aboutDlg").hidden = true; });
+  $("introGo").addEventListener("click", function () { $("introDlg").hidden = true; });
+  $("introRoll").addEventListener("click", function () {
+    $("introDlg").hidden = true;
+    // discard the persona we just rolled (and anything generated for them)
+    var old = state.persona;
+    Object.values(state.wins).forEach(function (w) { closeWin(w); });
+    Object.values(state.gen).forEach(function (g) { g.win = null; });
+    pfQueue.length = 0;
+    if (old) {
+      var i = personas.findIndex(function (q) { return q.name === old.name; });
+      if (i >= 0) removePersona(i);
+    }
+    rollNewPersona();
+  });
 
   /* keyboard */
   document.addEventListener("keydown", function (e) {
@@ -1432,16 +1537,22 @@
       d.className = "pav";
       d.innerHTML = '<div class="pface">' + esc(p.emoji || "🙂") + '</div>' +
         '<div class="pname">' + esc(p.name) + '</div>' +
-        '<div class="pdesc">' + esc(p.desc.slice(0, 60)) + (p.desc.length > 60 ? "…" : "") + '</div>';
-      d.addEventListener("click", function () { login(p); });
-      d.addEventListener("contextmenu", function (e) {  // right-click to remove custom personas
-        e.preventDefault();
-        if (i >= DEFAULT_PERSONAS.length || personas.length > 1) {
-          if (confirm("Remove persona “" + p.name + "”?")) {
-            personas.splice(i, 1); savePrefs(); renderLogin();
-          }
-        }
+        '<div class="pdesc">' + esc(p.desc.slice(0, 60)) + (p.desc.length > 60 ? "…" : "") + '</div>' +
+        '<div class="pdel" title="Remove persona">✕</div>';
+      d.addEventListener("click", function (e) {
+        if (e.target.classList.contains("pdel")) return;
+        login(p);
       });
+      function remove(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (personas.length <= 1) { alert("wibeOS needs at least one persona."); return; }
+        if (confirm("Remove “" + p.name + "” and all their apps, theme and files?")) {
+          removePersona(i);
+        }
+      }
+      d.querySelector(".pdel").addEventListener("click", remove);
+      d.addEventListener("contextmenu", remove);
       box.appendChild(d);
     });
     var add = document.createElement("div");
@@ -1458,19 +1569,43 @@
     dice.className = "pav";
     dice.innerHTML = '<div class="pface">🎲</div>' +
       '<div class="pname">Surprise Me</div><div class="pdesc">roll a random persona</div>';
-    dice.addEventListener("click", function () {
-      var p = randomPersona();
-      personas.push(p);
-      savePrefs();
-      login(p);   // straight in — they'll meet themselves via their apps
-    });
+    dice.addEventListener("click", rollNewPersona);
     box.appendChild(dice);
   }
 
-  function login(p) {
+  function rollNewPersona() {
+    var p = randomPersona();
+    personas.push(p);
+    savePrefs();
+    login(p, true);   // introduce them to themselves
+  }
+
+  function removePersona(i) {
+    var p = personas[i];
+    personas.splice(i, 1);
+    delete themes[p.name];
+    delete installed[p.name];
+    // purge their cached apps (memory + disk)
+    Object.keys(state.cache).forEach(function (k) {
+      if (k.indexOf(p.name + "::") === 0) {
+        delete state.cache[k];
+        post({ control: "delcache", app: k });
+      }
+    });
+    savePrefs();
+    renderLogin();
+  }
+
+  function login(p, introduce) {
     state.persona = p;
     $("login").classList.add("hidden");
     $("mAppName").textContent = "Finder";
+    if (introduce) {
+      $("introEmoji").textContent = p.emoji;
+      $("introName").textContent = p.name;
+      $("introDesc").textContent = p.desc;
+      $("introDlg").hidden = false;
+    }
     refreshDock(); // show this persona's installed apps
     if (themes[p.name]) {
       applyTheme(themes[p.name]);
@@ -1481,6 +1616,7 @@
     }
   }
 
+  window.wibeosLogout = function () { if (state.persona) logout(); };
   function logout() {
     Object.values(state.wins).forEach(function (w) { closeWin(w); });
     Object.values(state.gen).forEach(function (p) { p.win = null; }); // finish into cache silently
