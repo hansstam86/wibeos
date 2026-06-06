@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>wibeOS</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+               font-family: -apple-system, system-ui, sans-serif;
+               -webkit-user-select: none; user-select: none; }
+
+  /* ---------- Desktop ---------- */
+  #desktop { position: fixed; inset: 0;
+    background:
+      radial-gradient(1200px 800px at 70% 20%, #7b6cd9 0%, transparent 60%),
+      radial-gradient(1000px 700px at 20% 80%, #d96cb0 0%, transparent 55%),
+      linear-gradient(160deg, #1b1f3a 0%, #3a2a5d 45%, #16203c 100%); }
+
+  /* ---------- Menu bar ---------- */
+  #menubar { position: fixed; top: 0; left: 0; right: 0; height: 26px; z-index: 1000;
+    display: flex; align-items: center; padding: 0 12px; gap: 2px;
+    background: rgba(28,28,34,.55); backdrop-filter: blur(22px);
+    color: #fff; font-size: 13px; }
+  .mitem { padding: 2px 10px; border-radius: 5px; cursor: default; white-space: nowrap; }
+  .mitem.bold { font-weight: 700; }
+  .mitem.open, .mitem:active { background: rgba(255,255,255,.22); }
+  #mright { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 12.5px; }
+  #dropdown { position: fixed; z-index: 1001; min-width: 200px; padding: 5px;
+    background: rgba(38,38,44,.92); backdrop-filter: blur(22px);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.45); color: #fff; font-size: 13px; }
+  #dropdown[hidden] { display: none; }
+  .ditem { padding: 4px 10px; border-radius: 5px; display: flex; justify-content: space-between; gap: 24px; }
+  .ditem:hover { background: #2f6fed; }
+  .ditem .key { color: rgba(255,255,255,.5); }
+  .dsep { height: 1px; background: rgba(255,255,255,.15); margin: 5px 8px; }
+
+  /* ---------- Windows ---------- */
+  .win { position: absolute; min-width: 260px; min-height: 160px;
+    background: #f2f2f4; border-radius: 11px; overflow: hidden;
+    box-shadow: 0 22px 70px rgba(0,0,0,.5), 0 0 0 .5px rgba(255,255,255,.25);
+    display: flex; flex-direction: column; }
+  .win.front { box-shadow: 0 30px 90px rgba(0,0,0,.62), 0 0 0 .5px rgba(255,255,255,.35); }
+  .tbar { height: 30px; flex: 0 0 30px; display: flex; align-items: center;
+    background: linear-gradient(#e8e8ea, #dcdcdf); border-bottom: 1px solid #c8c8cc;
+    cursor: default; position: relative; }
+  .win:not(.front) .tbar { background: #ececee; }
+  .lights { display: flex; gap: 8px; padding: 0 10px; }
+  .lt { width: 12px; height: 12px; border-radius: 50%; border: .5px solid rgba(0,0,0,.15); }
+  .lt.red { background: #ff5f57; } .lt.yel { background: #febc2e; } .lt.grn { background: #28c840; }
+  .win:not(.front) .lt { background: #d0d0d3; }
+  .lt:hover { filter: brightness(.85); }
+  .ttitle { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px;
+    font-weight: 600; color: #4a4a4f; pointer-events: none; }
+  .wbody { flex: 1; position: relative; background: #fff; }
+  .wbody iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+  .rsz { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; z-index: 5; }
+  body.dragging iframe { pointer-events: none; }
+  .win.mini { display: none; }
+
+  /* live "materializing" preview: partial app HTML rendered as it streams */
+  .preview { position: absolute; inset: 0; overflow: hidden; background: #fff;
+    pointer-events: none; display: none; z-index: 3; }
+  .win.generating .preview { display: block; }
+  .win.generating iframe { visibility: hidden; }
+  .genpill { position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,30,36,.85); color: #fff; font-size: 12px; padding: 5px 14px;
+    border-radius: 20px; z-index: 7; display: none; white-space: nowrap;
+    animation: pulse 1.2s ease-in-out infinite; }
+  .win.generating .genpill { display: block; }
+  .glitch { position: absolute; top: 8px; right: 10px; z-index: 8; display: none;
+    background: rgba(185,120,20,.94); color: #fff; font-size: 11px; padding: 4px 11px;
+    border-radius: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+  .glitch:hover { filter: brightness(1.12); }
+  .win.glitched .glitch { display: block; }
+
+  /* regen veil */
+  .veil { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(250,250,252,.45); backdrop-filter: blur(2px); z-index: 4; }
+  .win.updating .veil { display: flex; }
+  .vsp { background: rgba(30,30,36,.85); color: #fff; font-size: 13px; padding: 8px 16px;
+    border-radius: 20px; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+
+  /* error */
+  .werr { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; background: #1a1b20; color: #eee;
+    font-size: 13px; z-index: 6; padding: 20px; text-align: center; }
+  .win.failed .werr { display: flex; }
+  .werr button { background: #2f6fed; color: #fff; border: 0; border-radius: 6px;
+    padding: 6px 18px; font-size: 13px; cursor: pointer; }
+
+  /* ---------- Dock ---------- */
+  #dockwrap { position: fixed; bottom: 8px; left: 0; right: 0; display: flex;
+    justify-content: center; z-index: 1000; pointer-events: none; }
+  #dock { display: flex; align-items: flex-end; gap: 4px; padding: 6px 10px;
+    background: rgba(255,255,255,.22); backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,.25); border-radius: 20px; pointer-events: auto; }
+  .dicon { font-size: 38px; line-height: 1; padding: 2px 4px; position: relative;
+    cursor: default; transition: transform .12s ease; transform-origin: bottom center; }
+  .dicon:hover { transform: scale(1.28) translateY(-6px); }
+  .dicon:active { filter: brightness(.8); }
+  .dicon .dot { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.95); display: none; }
+  .dicon.running .dot { display: block; }
+  .dicon .tip { position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%);
+    background: rgba(40,40,46,.92); color: #fff; font-size: 12px; padding: 3px 10px;
+    border-radius: 6px; white-space: nowrap; display: none; }
+  .dicon:hover .tip { display: block; }
+  .dsepv { width: 1px; align-self: stretch; background: rgba(255,255,255,.3); margin: 4px 5px; }
+
+  /* ---------- System dialogs ---------- */
+  .sysdlg { position: fixed; inset: 0; z-index: 2000; display: flex;
+    align-items: center; justify-content: center; background: rgba(0,0,0,.25); }
+  .sysdlg[hidden] { display: none; }
+  .dlgbox { background: rgba(244,244,246,.97); border-radius: 13px; padding: 26px 30px;
+    width: 380px; text-align: center; box-shadow: 0 26px 80px rgba(0,0,0,.5);
+    font-size: 13px; color: #333; }
+  .dlgbox h2 { font-size: 16px; margin: 8px 0 4px; }
+  .dlgbox p { color: #777; margin: 4px 0 14px; }
+  .dlgbox input { width: 100%; padding: 7px 10px; font-size: 13px; border: 1px solid #ccc;
+    border-radius: 7px; margin-bottom: 14px; -webkit-user-select: text; user-select: text; }
+  .dlgbox button { background: #2f6fed; color: #fff; border: 0; border-radius: 7px;
+    padding: 7px 20px; font-size: 13px; cursor: pointer; margin: 0 4px; }
+  .dlgbox button.alt { background: #e3e3e6; color: #333; }
+
+  #sleepveil { position: fixed; inset: 0; background: #000; z-index: 3000; }
+  #sleepveil[hidden] { display: none; }
+
+  /* ---------- Boot ---------- */
+  #boot { position: fixed; inset: 0; background: #000; z-index: 5000; color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px; transition: opacity .8s; }
+  #boot.hidden { opacity: 0; pointer-events: none; }
+  #blogo { font-size: 84px; }
+  #bbar { width: 230px; height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden; }
+  #bfill { height: 100%; width: 2%; background: #fff; border-radius: 3px; transition: width 1.1s ease; }
+  #btag { font-size: 13px; color: #888; }
+</style>
+</head>
+<body>
+  <div id="desktop"></div>
+
+  <div id="menubar">
+    <div class="mitem" data-menu="apple"></div>
+    <div class="mitem bold" data-menu="app" id="mAppName">Finder</div>
+    <div class="mitem" data-menu="File">File</div>
+    <div class="mitem" data-menu="Edit">Edit</div>
+    <div class="mitem" data-menu="View">View</div>
+    <div class="mitem" data-menu="Window">Window</div>
+    <div class="mitem" data-menu="Help">Help</div>
+    <div id="mright"><span>📶</span><span>🔋</span><span id="clock"></span></div>
+  </div>
+  <div id="dropdown" hidden></div>
+
+  <div id="windows"></div>
+
+  <div id="dockwrap"><div id="dock"></div></div>
+
+  <div class="sysdlg" id="imagineDlg" hidden>
+    <div class="dlgbox">
+      <div style="font-size:40px">✨</div>
+      <h2>Imagine an App</h2>
+      <p>Name any app — real or completely made up — and wibeOS will conjure it.</p>
+      <input id="imagineInput" placeholder="e.g. Excel, DreamJournal, GoatSimulator Pro…">
+      <div>
+        <button class="alt" id="imagineCancel">Cancel</button>
+        <button id="imagineGo">Conjure</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sysdlg" id="aboutDlg" hidden>
+    <div class="dlgbox">
+      <div style="font-size:48px"></div>
+      <h2>About This wibe</h2>
+      <p><b>wibeOS 1.0</b> (Hallucinatara)<br>
+         Chip&nbsp;&nbsp;Imagination M∞<br>
+         Memory&nbsp;&nbsp;Vibes, mostly<br>
+         Apps&nbsp;&nbsp;0 real, ∞ possible</p>
+      <button id="aboutOk">OK</button>
+    </div>
+  </div>
+
+  <div id="sleepveil" hidden></div>
+
+  <div id="boot">
+    <div id="blogo"></div>
+    <div id="bbar"><div id="bfill"></div></div>
+    <div id="btag">wibeOS &mdash; the shell is real, the apps are not</div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============ state ============ */
+  var CACHE_V = 4; // bump to invalidate cached apps when the bridge/prompt changes
+  var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {} };
+  var winsEl = document.getElementById("windows");
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ============ default apps ============ */
+  var APPS = [
+    { name: "Finder", icon: "📁", w: 860, h: 540,
+      hint: "macOS Finder: translucent sidebar (Favorites: Desktop, Documents, Downloads, Applications; iCloud; Tags), toolbar with back/forward and view buttons, icon grid of plausible files and folders belonging to the user. Selecting shows highlight; double-clicking a text file can preview it locally in a panel. Opening folders swaps content locally." },
+    { name: "Safari", icon: "🧭", w: 980, h: 640,
+      hint: "Web browser. Toolbar with back/forward, address bar with data-wibe-enter=\"navigate: hallucinate the full web page for this URL or search query, keeping the browser chrome\". Start page with a favorites grid of fake sites, each tile data-wibe to visit it. Pages must be rich and plausible with real-looking copy, nav, images-as-CSS." },
+    { name: "Calculator", icon: "🧮", w: 270, h: 420,
+      hint: "Fully working macOS-style calculator (dark style, orange operator buttons), computed entirely locally in JavaScript including chained operations, %, +/-, decimals. No data-wibe anywhere." },
+    { name: "Notes", icon: "📝", w: 820, h: 520,
+      hint: "Apple Notes look: yellow accents, sidebar list of 4-5 pre-written entertaining notes (groceries, ideas, a half-finished poem), editable note body (contenteditable) working locally. New note button works locally." },
+    { name: "Mail", icon: "✉️", w: 940, h: 600,
+      hint: "Mail client: three-pane (mailboxes, message list, reading pane) with ~8 hallucinated entertaining-but-plausible emails (newsletters, a boss, a confused relative). Reading and composing work locally; Send shows a whoosh confirmation locally." },
+    { name: "Photos", icon: "🌸", w: 900, h: 580,
+      hint: "Photos app: grid of 12+ 'photos' built from CSS gradients + emoji compositions (sunsets, cats, vacations) with dates, written as STATIC HTML markup (no JS-generated grid). Clicking opens a large lightbox view locally. Memories row on top." },
+    { name: "Music", icon: "🎵", w: 880, h: 560,
+      hint: "Music player: sidebar, album grid of invented artists/albums with CSS-art covers (static HTML), now-playing bar. Playback uses the OS music engine: wibe.music.play({title, artist, genre}) on track click, pause/resume/setVolume wired to the controls, and an animated equalizer driven by wibe.music.getLevels() polled in requestAnimationFrame. Give each invented track a genre (pop/rock/lofi/hiphop/edm/ambient) so songs sound distinct. All local." },
+    { name: "Terminal", icon: "⬛", w: 700, h: 450,
+      hint: "Terminal (dark, green-on-black, blocky cursor). Implement ls, cd, cat, pwd, echo, whoami, date, clear, uname, neofetch (with wibeOS ASCII art) locally in JS against a small fake filesystem. Unknown commands print witty plausible output locally. Prompt: hans@wibeos ~ %" },
+    { name: "Trash", icon: "🗑", w: 540, h: 380,
+      hint: "The Trash window: a few comically regrettable deleted files with sizes and dates. Empty Trash works locally with a satisfying poof animation." }
+  ];
+
+  /* ============ bridge to Swift / Claude ============ */
+  function post(obj) {
+    window.webkit.messageHandlers.bridge.postMessage(JSON.stringify(obj));
+  }
+
+  function strip(html) {
+    return String(html).replace(/^\s*```(?:html)?\s*/i, "").replace(/```\s*$/, "");
+  }
+
+  /* script injected into every generated app so it can talk back */
+  var BRIDGE =
+    "<script>(function(){" +
+    "function describe(el){var d={tag:el.tagName?el.tagName.toLowerCase():'?'};" +
+    "if(el.id)d.id=el.id;" +
+    "var t=(el.innerText||el.value||'').trim().slice(0,80);if(t)d.text=t;" +
+    "['data-wibe','data-wibe-enter','placeholder','name','title','aria-label'].forEach(function(a){" +
+    "var v=el.getAttribute&&el.getAttribute(a);if(v)d[a]=String(v).slice(0,160);});return d;}" +
+    "function inputs(){var o=[];document.querySelectorAll('input,textarea,select,[contenteditable]').forEach(function(i){" +
+    "var v=(i.type==='checkbox'||i.type==='radio')?(i.checked?'checked':''):(i.value!==undefined&&i.value!==''?i.value:(i.getAttribute&&i.getAttribute('contenteditable')!==null?i.innerText:''));" +
+    "if(v)o.push({el:describe(i),value:String(v).slice(0,500)});});return o;}" +
+    "function fire(action,target){parent.postMessage({wibe:'event',detail:{action:action,target:target,inputs:inputs()}},'*');}" +
+    "document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-wibe]');" +
+    "if(!t)return;e.preventDefault();fire(t.getAttribute('data-wibe'),describe(t));},true);" +
+    "document.addEventListener('keydown',function(e){if(e.key!=='Enter')return;" +
+    "var t=e.target.closest&&e.target.closest('[data-wibe-enter]');if(!t)return;e.preventDefault();" +
+    "fire(t.getAttribute('data-wibe-enter'),describe(t));},true);" +
+    "window.addEventListener('message',function(e){var d=e.data||{};" +
+    "if(d.wibe==='menu'){window.dispatchEvent(new CustomEvent('wibe-menu',{detail:d.item}));}" +
+    "if(d.wibe==='patch'){(d.patches||[]).forEach(function(p){" +
+    "var el=document.querySelector(p.select);if(el)el.innerHTML=p.html;});}});" +
+    "window.wibe={event:function(a,data){parent.postMessage({wibe:'event',detail:{action:a,data:data===undefined?null:data,inputs:inputs()}},'*');}," +
+    "open:function(app,hint){parent.postMessage({wibe:'open',app:app,hint:hint||''},'*');}};" +
+    /* built-in, tested camera API so hallucinated apps can't get it wrong */
+    "window.wibe.camera={_s:null," +
+    "start:function(video){return navigator.mediaDevices.getUserMedia({video:true}).then(function(s){" +
+    "window.wibe.camera._s=s;video.srcObject=s;video.muted=true;video.setAttribute('playsinline','');video.setAttribute('autoplay','');" +
+    "return Promise.resolve(video.play()).catch(function(){}).then(function(){" +
+    "return new Promise(function(res){if(video.videoWidth)return res(s);" +
+    "video.addEventListener('loadedmetadata',function(){res(s);},{once:true});});});});}," +
+    "snap:function(video){if(!video||!video.videoWidth)return null;" +
+    "var c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;" +
+    "c.getContext('2d').drawImage(video,0,0);return c.toDataURL('image/png');}," +
+    "stop:function(){var s=window.wibe.camera._s;if(s){s.getTracks().forEach(function(t){t.stop();});window.wibe.camera._s=null;}}};" +
+    "document.addEventListener('mousedown',function(){parent.postMessage({wibe:'focus'},'*');},true);" +
+    "window.addEventListener('error',function(e){parent.postMessage({wibe:'jserror',message:String(e.message||'script error').slice(0,200)},'*');});" +
+    /* WebKit creates AudioContexts suspended; auto-resume them on any user gesture */
+    "var _AC=window.AudioContext||window.webkitAudioContext;" +
+    "if(_AC){var _acs=[];var _P=function(){var c=new _AC();_acs.push(c);return c;};" +
+    "_P.prototype=_AC.prototype;window.AudioContext=_P;window.webkitAudioContext=_P;" +
+    "var _kick=function(){_acs.forEach(function(c){if(c.state==='suspended')c.resume();});};" +
+    "document.addEventListener('click',_kick,true);document.addEventListener('keydown',_kick,true);}" +
+    /* surface getUserMedia failures via the glitch pill instead of failing silently */
+    "if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){" +
+    "var _gum=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);" +
+    "navigator.mediaDevices.getUserMedia=function(c){return _gum(c).catch(function(err){" +
+    "parent.postMessage({wibe:'jserror',message:'getUserMedia: '+err.name+' — '+err.message},'*');throw err;});};}" +
+    "})();<\/script>";
+
+  /* ============ wibe.music — deterministic generative music engine ============
+     Injected into every app (serialized via toString) so hallucinated players get
+     real, tested audio instead of model-written synthesis code. */
+  function wibeMusicEngine() {
+    var ctx = null, master = null, analyser = null, delaySend = null, delayNode = null, noiseBuf = null;
+    var st = { playing: false, timer: null, next: 0, step: 0, song: null, vol: 0.6 };
+
+    function hash(s) {
+      var h = 2166136261; s = String(s);
+      for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    }
+    function rng(seed) {
+      var a = seed >>> 0;
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        var t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    function midi(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+    var GENRES = {
+      pop:    { bpm: [98, 118], swing: 0, minorP: .35, bass: 'sawtooth', lead: 'square', pad: 'sawtooth', padStyle: 'pad',
+                chordInst: 'ep', bassInst: 'osc', leadInst: 'osc', vocal: 'choir',
+                kick: 'x.......x..x....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bassPat: 'x.x.x.x.x.x.x.x.',
+                prog: [[0,4,5,3],[5,3,0,4],[0,5,1,4],[3,4,0,0]] },
+      rock:   { bpm: [120, 142], swing: 0, minorP: .4, bass: 'square', lead: 'sawtooth', pad: 'sawtooth', padStyle: 'stab',
+                chordInst: 'pluck', bassInst: 'pluck', leadInst: 'pluck', vocal: 'none',
+                kick: 'x.......x.x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bassPat: 'x.x.x.x.x.x.x.x.',
+                prog: [[0,3,4,4],[0,5,3,4]] },
+      lofi:   { bpm: [72, 86], swing: .13, minorP: .7, bass: 'triangle', lead: 'triangle', pad: 'triangle', padStyle: 'pad',
+                chordInst: 'ep', bassInst: 'pluck', leadInst: 'ep', vocal: 'none', seventh: true, hatVol: .1,
+                kick: 'x......x..x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bassPat: 'x.......x.......',
+                prog: [[1,4,0,5],[0,3,1,4],[5,1,3,4]] },
+      hiphop: { bpm: [80, 94], swing: .08, minorP: .75, bass: 'sine', lead: 'square', pad: 'triangle', padStyle: 'pad',
+                chordInst: 'ep', bassInst: '808', leadInst: 'pluck', vocal: 'none', seventh: true, hatVol: .07,
+                kick: 'x.....x...x.....', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx', bassPat: 'x....x....x..x..',
+                prog: [[0,5,3,4],[0,0,5,5]] },
+      edm:    { bpm: [122, 128], swing: 0, minorP: .6, bass: 'sawtooth', lead: 'sawtooth', pad: 'sawtooth', padStyle: 'arp',
+                chordInst: 'saw', bassInst: 'osc', leadInst: 'osc', vocal: 'choir',
+                kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..o...o...o...o.', bassPat: '..x...x...x...x.',
+                prog: [[5,3,0,4],[0,5,3,4]] },
+      ambient:{ bpm: [62, 70], swing: 0, minorP: .5, bass: 'sine', lead: 'sine', pad: 'triangle', padStyle: 'pad',
+                chordInst: 'voice', bassInst: 'osc', leadInst: 'voice', vocal: 'choir', seventh: true, drums: false,
+                kick: '................', snare: '................', hat: '................', bassPat: 'x...............',
+                prog: [[0,3,5,4],[0,1,5,3]] }
+    };
+
+    function pickGenre(meta) {
+      var s = ((meta.genre || '') + ' ' + (meta.mood || '') + ' ' + (meta.title || '') + ' ' + (meta.artist || '')).toLowerCase();
+      if (/lo-?fi|chill|study|cozy|jazz|rain|cafe/.test(s)) return 'lofi';
+      if (/hip ?hop|rap|trap|beats/.test(s)) return 'hiphop';
+      if (/edm|house|techno|club|dance|electro|rave|synthwave|retro|disco/.test(s)) return 'edm';
+      if (/rock|metal|punk|indie|grunge|guitar/.test(s)) return 'rock';
+      if (/ambient|sleep|space|drone|meditat|calm|piano/.test(s)) return 'ambient';
+      return 'pop';
+    }
+
+    function ensure() {
+      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = st.vol * 0.5;
+      var comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -20; comp.knee.value = 18; comp.ratio.value = 5;
+      analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.75;
+      delayNode = ctx.createDelay(1);
+      var fb = ctx.createGain(), wet = ctx.createGain();
+      delayNode.delayTime.value = 0.27; fb.gain.value = 0.3; wet.gain.value = 0.2;
+      delaySend = ctx.createGain();
+      delaySend.connect(delayNode); delayNode.connect(fb); fb.connect(delayNode); delayNode.connect(wet);
+      master.connect(comp); wet.connect(comp); comp.connect(analyser); analyser.connect(ctx.destination);
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+
+    function noise(t, dur, vol, type, freq, q) {
+      var src = ctx.createBufferSource(); src.buffer = noiseBuf;
+      var f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q || 1;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(t); src.stop(t + dur + 0.02);
+    }
+    function kick(t, v) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(150, t);
+      o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+      g.gain.setValueAtTime(v, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.3);
+    }
+    function snare(t, v) {
+      noise(t, 0.16, v, 'bandpass', 1800, 0.8);
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = 190;
+      g.gain.setValueAtTime(v * 0.5, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.1);
+    }
+    function hat(t, v, open) { noise(t, open ? 0.22 : 0.05, v, 'highpass', 7500, 1); }
+
+    function tone(t, n, dur, vol, type, cutoff, att, send) {
+      var o = ctx.createOscillator(); o.type = type; o.frequency.value = midi(n);
+      var o2 = ctx.createOscillator(); o2.type = type; o2.frequency.value = midi(n); o2.detune.value = 8;
+      var f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cutoff;
+      var g = ctx.createGain();
+      att = att || 0.012;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + att);
+      g.gain.setValueAtTime(vol, Math.max(t + att, t + dur * 0.6));
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(f); o2.connect(f); f.connect(g); g.connect(master);
+      if (send) { var sg = ctx.createGain(); sg.gain.value = send; g.connect(sg); sg.connect(delaySend); }
+      o.start(t); o.stop(t + dur + 0.05);
+      o2.start(t); o2.stop(t + dur + 0.05);
+    }
+
+    /* --- real-ish instruments --- */
+    function pluckBuf(freq, dur, damp) { // Karplus-Strong plucked string
+      var sr = ctx.sampleRate, len = Math.max(64, Math.floor(sr * dur));
+      var N = Math.max(2, Math.floor(sr / freq));
+      var buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+      var dl = new Float32Array(N), i;
+      for (i = 0; i < N; i++) dl[i] = Math.random() * 2 - 1;
+      var idx = 0;
+      for (i = 0; i < len; i++) {
+        d[i] = dl[idx];
+        dl[idx] = (dl[idx] + dl[(idx + 1) % N]) * 0.5 * damp;
+        idx = (idx + 1) % N;
+      }
+      return buf;
+    }
+    function pluck(t, n, dur, vol, damp, cutoff) {
+      var src = ctx.createBufferSource();
+      src.buffer = pluckBuf(midi(n), dur, damp || 0.996);
+      var f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cutoff || 4500;
+      var g = ctx.createGain(); g.gain.value = vol;
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(t);
+    }
+    function ep(t, n, dur, vol) { // FM electric piano (DX7-ish: decaying mod index + tine)
+      var f0 = midi(n);
+      var car = ctx.createOscillator(); car.type = 'sine'; car.frequency.value = f0;
+      var mod = ctx.createOscillator(); mod.type = 'sine'; mod.frequency.value = f0;
+      var mg = ctx.createGain();
+      mg.gain.setValueAtTime(f0 * 1.5, t);
+      mg.gain.exponentialRampToValueAtTime(f0 * 0.01, t + Math.min(1.2, dur));
+      mod.connect(mg); mg.connect(car.frequency);
+      var tine = ctx.createOscillator(); tine.type = 'sine'; tine.frequency.value = f0 * 4;
+      var tg = ctx.createGain();
+      tg.gain.setValueAtTime(vol * 0.4, t);
+      tg.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      car.connect(g); tine.connect(tg); tg.connect(g); g.connect(master);
+      var sg = ctx.createGain(); sg.gain.value = 0.25; g.connect(sg); sg.connect(delaySend);
+      [car, mod, tine].forEach(function (o) { o.start(t); o.stop(t + dur + 0.05); });
+    }
+    function b808(t, n, dur, vol) { // sliding sine sub-bass
+      var f0 = midi(n);
+      var o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(f0 * 2.2, t);
+      o.frequency.exponentialRampToValueAtTime(f0, t + 0.06);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    function voice(t, n, dur, vol, vowel) { // formant-filtered "singing" voice
+      var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = midi(n);
+      var lfo = ctx.createOscillator(); lfo.frequency.value = 5;
+      var lg = ctx.createGain(); lg.gain.value = 7;
+      lfo.connect(lg); lg.connect(o.detune);
+      var fmts = vowel === 'ooh' ? [330, 870, 2250] : [800, 1150, 2900];
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.09);
+      g.gain.setValueAtTime(vol, Math.max(t + 0.09, t + dur * 0.7));
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      fmts.forEach(function (fm, i) {
+        var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fm; bp.Q.value = 9;
+        var bg = ctx.createGain(); bg.gain.value = [1, 0.5, 0.25][i];
+        o.connect(bp); bp.connect(bg); bg.connect(g);
+      });
+      g.connect(master);
+      var sg = ctx.createGain(); sg.gain.value = 0.5; g.connect(sg); sg.connect(delaySend);
+      o.start(t); o.stop(t + dur + 0.1);
+      lfo.start(t); lfo.stop(t + dur + 0.1);
+    }
+    function speakAt(t, line) { // spoken/rap vocals via the system speech synthesizer
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+      var delayMs = Math.max(0, (t - ctx.currentTime) * 1000);
+      setTimeout(function () {
+        if (!st.playing) return;
+        try {
+          var u = new window.SpeechSynthesisUtterance(String(line));
+          u.rate = Math.min(1.6, Math.max(0.75, st.song.bpm / 92));
+          u.pitch = st.song.minor ? 0.85 : 1.1;
+          u.volume = Math.min(1, st.vol * 1.3);
+          window.speechSynthesis.speak(u);
+        } catch (e) {}
+        if (window.wibe.music.onLyric) { try { window.wibe.music.onLyric(String(line)); } catch (e) {} }
+      }, delayMs);
+    }
+
+    function makeMotif(R) {
+      var rhythms = [[0,2,4,6,8,10,12,14],[0,3,6,8,11,14],[0,4,6,8,12,14],[0,2,6,10,12],[2,4,8,10,14]];
+      var hits = rhythms[Math.floor(R() * rhythms.length)];
+      var m = {}, deg = Math.floor(R() * 7);
+      for (var i = 0; i < hits.length; i++) {
+        if (R() < 0.18 && i > 0) continue;
+        deg = Math.max(0, Math.min(13, deg + [-2,-1,-1,0,1,1,2,3][Math.floor(R() * 8)]));
+        m[hits[i]] = deg;
+      }
+      return m;
+    }
+
+    function buildSong(meta) {
+      var seed = hash((meta.title || '') + '|' + (meta.artist || '') + '|' + (meta.seed || ''));
+      var R = rng(seed);
+      var gName = GENRES[String(meta.genre || '').toLowerCase()] ? String(meta.genre).toLowerCase() : pickGenre(meta);
+      var g = GENRES[gName];
+      var minor = R() < g.minorP;
+      return {
+        g: g, genre: gName, minor: minor,
+        root: 38 + Math.floor(R() * 10),
+        scale: minor ? [0,2,3,5,7,8,10] : [0,2,4,5,7,9,11],
+        prog: g.prog[Math.floor(R() * g.prog.length)],
+        bpm: meta.tempo || meta.bpm || Math.round(g.bpm[0] + R() * (g.bpm[1] - g.bpm[0])),
+        motifA: makeMotif(R), motifB: makeMotif(R),
+        leadCut: 1800 + R() * 2200,
+        vocal: meta.vocal || (meta.lyrics && meta.lyrics.length ? 'rap' : (g.vocal || 'none')),
+        lyrics: (meta.lyrics && meta.lyrics.length) ? meta.lyrics.map(String) : null
+      };
+    }
+
+    function deg2midi(song, base, deg) {
+      return base + 12 * Math.floor(deg / 7) + song.scale[((deg % 7) + 7) % 7];
+    }
+    function chordNotes(song, cd) {
+      var b = song.root + 24;
+      var arr = [deg2midi(song, b, cd), deg2midi(song, b, cd + 2), deg2midi(song, b, cd + 4)];
+      if (song.g.seventh) arr.push(deg2midi(song, b, cd + 6));
+      return arr;
+    }
+
+    function scheduleStep(n, t, s16) {
+      var song = st.song, g = song.g;
+      var stepIn = n % 16, bar = Math.floor(n / 16), barIn8 = bar % 8;
+      var chordDeg = song.prog[bar % 4];
+      var sectionB = barIn8 >= 4;
+      function j(v) { return v * (0.82 + Math.random() * 0.3); }
+
+      if (g.drums !== false) {
+        if (g.kick[stepIn] === 'x') kick(t, j(0.9));
+        if (g.snare[stepIn] === 'x') snare(t, j(0.5));
+        var h = g.hat[stepIn];
+        if (h === 'x') hat(t, j(g.hatVol || 0.15) * (stepIn % 4 === 2 ? 1.2 : 0.8), false);
+        if (h === 'o') hat(t, j(0.17), true);
+        if ((barIn8 === 3 || barIn8 === 7) && stepIn >= 13) snare(t, j(0.3)); // fill
+      }
+      if (g.bassPat[stepIn] === 'x') {
+        var bn = deg2midi(song, song.root, chordDeg);
+        var sustained = g.bassPat.indexOf('x', 1) === -1;
+        var bdur = s16 * (sustained ? 14 : 1.8);
+        if (g.bassInst === 'pluck') pluck(t, bn, Math.max(0.4, bdur), j(0.5), 0.998, 2200);
+        else if (g.bassInst === '808') b808(t, bn, s16 * 6, j(0.5));
+        else tone(t, bn, bdur, j(0.3), g.bass, 700, 0.008, 0);
+      }
+      function playChord(dur, vol, att) {
+        chordNotes(song, chordDeg).forEach(function (nn, ci) {
+          if (g.chordInst === 'ep') ep(t, nn, dur, j(vol * 1.2));
+          else if (g.chordInst === 'pluck') pluck(t + ci * 0.014, nn, Math.max(0.5, dur), j(vol * 1.8), 0.997, 3800);
+          else if (g.chordInst === 'voice') voice(t, nn, dur, vol * 0.9, ci % 2 ? 'ooh' : 'aah');
+          else tone(t, nn, dur, vol, g.pad, 1100, att || 0.01, 0.25);
+        });
+      }
+      if (g.padStyle === 'arp') {
+        if (stepIn % 2 === 0) {
+          var ad = [0, 2, 4, 7][(stepIn / 2) % 4];
+          tone(t, deg2midi(song, song.root + 24, chordDeg + ad), s16 * 1.6, j(0.13), g.pad, 2600, 0.005, 0.5);
+        }
+      } else if (g.padStyle === 'stab') {
+        if (stepIn === 0 || stepIn === 10) playChord(s16 * 3, 0.09);
+      } else if (stepIn === 0) {
+        playChord(s16 * 15, 0.08, s16 * 4);
+      }
+      var motif = sectionB ? song.motifB : song.motifA;
+      var deg = motif[stepIn];
+      if (deg !== undefined && bar % 2 === 1) {
+        var mn = deg2midi(song, song.root + 36, deg);
+        var mv = j(sectionB ? 0.15 : 0.1);
+        if (g.leadInst === 'pluck') pluck(t, mn, 0.9, mv * 2.2, 0.996, 5200);
+        else if (g.leadInst === 'ep') ep(t, mn, s16 * 2.4, mv * 1.3);
+        else if (g.leadInst === 'voice') voice(t, mn, s16 * 4, mv * 0.8, 'ooh');
+        else tone(t, mn, s16 * 2.4, mv, g.lead, song.leadCut, 0.015, 0.6);
+      }
+      if (stepIn === 0) { // vocals
+        if (song.vocal === 'choir' && sectionB) {
+          voice(t, deg2midi(song, song.root + 36, chordDeg), s16 * 15, 0.06, bar % 2 ? 'aah' : 'ooh');
+        }
+        if (song.vocal === 'rap' && song.lyrics && bar % 2 === 0) {
+          speakAt(t, song.lyrics[st.line % song.lyrics.length]);
+          st.line++;
+        }
+      }
+    }
+
+    function tick() {
+      if (!st.playing || !ctx) return;
+      var s16 = 60 / st.song.bpm / 4, sw = st.song.g.swing || 0;
+      while (st.next < ctx.currentTime + 0.2) {
+        scheduleStep(st.step, st.next, s16);
+        st.next += s16 * (st.step % 2 === 0 ? 1 + sw : 1 - sw);
+        st.step++;
+      }
+    }
+
+    window.wibe = window.wibe || {};
+    window.wibe.music = {
+      play: function (meta) {
+        ensure();
+        if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+        st.song = buildSong(meta || {});
+        delayNode.delayTime.value = 60 / st.song.bpm * 0.75;
+        st.step = 0;
+        st.line = 0;
+        st.next = ctx.currentTime + 0.08;
+        st.playing = true;
+        master.gain.setTargetAtTime(st.vol * 0.5, ctx.currentTime, 0.03);
+        if (!st.timer) st.timer = setInterval(tick, 25);
+        return { bpm: st.song.bpm, genre: st.song.genre, key: st.song.minor ? 'minor' : 'major' };
+      },
+      pause: function () {
+        if (ctx) ctx.suspend();
+        if (window.speechSynthesis) { try { window.speechSynthesis.pause(); } catch (e) {} }
+      },
+      resume: function () {
+        if (ctx) ctx.resume();
+        if (window.speechSynthesis) { try { window.speechSynthesis.resume(); } catch (e) {} }
+      },
+      stop: function () {
+        st.playing = false;
+        if (master && ctx) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
+        if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+      },
+      onLyric: null,
+      setVolume: function (v) {
+        st.vol = Math.max(0, Math.min(1, +v || 0));
+        if (master && ctx && st.playing) master.gain.setTargetAtTime(st.vol * 0.5, ctx.currentTime, 0.03);
+      },
+      isPlaying: function () { return !!(st.playing && ctx && ctx.state === 'running'); },
+      getLevels: function () {
+        if (!analyser) return [];
+        var d = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(d);
+        var out = [], band = Math.floor(d.length / 16);
+        for (var i = 0; i < 16; i++) {
+          var s = 0;
+          for (var k = 0; k < band; k++) s += d[i * band + k];
+          out.push(s / band / 255);
+        }
+        return out;
+      }
+    };
+  }
+  var ENGINE = "<script>(" + wibeMusicEngine.toString() + ")();<\/script>";
+
+  /* render partial app HTML safely: styles apply, scripts and partial tags dropped */
+  function previewHtml(html) {
+    var h = strip(html);
+    h = h.replace(/<!DOCTYPE[^>]*>/gi, "")
+         .replace(/<\/?(html|head|body)[^>]*>/gi, "")
+         .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, "")
+         .replace(/<meta[^>]*>/gi, "")
+         .replace(/<script[\s\S]*?(<\/script>|$)/gi, "")
+         .replace(/<[^>]*$/, ""); // drop a trailing half-open tag
+    // close an unterminated <style> so partial CSS still applies while streaming
+    var opens = (h.match(/<style/gi) || []).length;
+    var closes = (h.match(/<\/style>/gi) || []).length;
+    if (opens > closes) h += "</style>";
+    return h;
+  }
+
+  /* Creations are "gen" records keyed by their own id, decoupled from windows:
+     they can run as background prefetch, and a window opened mid-flight attaches
+     to the running generation. Updates (data-wibe) stay window-owned. */
+  window.wibeos = {
+    cacheLoaded: function (map) {
+      state.cache = {};
+      Object.keys(map || {}).forEach(function (k) {
+        if (map[k] && map[k].v === CACHE_V) state.cache[k] = map[k];
+        // stale-version entries are ignored → prefetch regenerates them
+      });
+      prefetchAll();
+    },
+    chunk: function (id, t) {
+      var p = state.gen[id];
+      if (p) {
+        p.buf += t;
+        if (p.win && !p.raf) {
+          p.raf = requestAnimationFrame(function () {
+            p.raf = null;
+            if (p.win) p.win.previewEl.innerHTML = previewHtml(p.buf);
+          });
+        }
+        return;
+      }
+      var w = state.wins[id];
+      if (w) w.buf += t; // updates keep the old UI under the veil
+    },
+    done: function (id) {
+      var p = state.gen[id];
+      if (p) {
+        delete state.gen[id];
+        p.history.push({ role: "assistant", content: p.buf });
+        var raw = strip(p.buf); // cache RAW html; bridge is injected at mount time
+        state.cache[p.app] = { doc: raw, history: p.history.slice(), v: CACHE_V };
+        post({ control: "savecache", app: p.app, doc: raw, history: p.history, v: CACHE_V });
+        if (p.win && state.wins[p.win.id]) {
+          p.win.history = p.history.slice();
+          p.win.iframe.srcdoc = withBridge(raw);
+          p.win.previewEl.innerHTML = "";
+          p.win.el.classList.remove("generating", "failed");
+        }
+        pump();
+        return;
+      }
+      var w = state.wins[id];
+      if (!w) return;
+      w.history.push({ role: "assistant", content: w.buf });
+      trimHistory(w);
+      var patches = parsePatches(w.buf);
+      if (patches) {
+        // fast path: surgically update the live app, no remount
+        w.iframe.contentWindow.postMessage({ wibe: "patch", patches: patches }, "*");
+      } else {
+        mount(w, w.buf);
+      }
+      w.buf = "";
+      w.el.classList.remove("updating", "failed");
+    },
+    fail: function (id, msg) {
+      var p = state.gen[id];
+      if (p) {
+        delete state.gen[id];
+        if (p.win && state.wins[p.win.id]) {
+          p.win.el.classList.remove("generating");
+          p.win.el.classList.add("failed");
+          p.win.errMsgEl.textContent = msg;
+        }
+        pump();
+        return;
+      }
+      var w = state.wins[id];
+      if (!w) return;
+      // keep the trailing user msg so Retry can resend it
+      w.el.classList.remove("updating");
+      w.el.classList.add("failed");
+      w.errMsgEl.textContent = msg;
+      w.buf = "";
+    }
+  };
+
+  function sendGen(w) {
+    w.buf = "";
+    post({ id: w.id, messages: w.history });
+  }
+
+  function trimHistory(w) {
+    // keep the creation pair + the last 4 messages: smaller context = faster updates
+    if (w.history.length > 6) {
+      w.history = w.history.slice(0, 2).concat(w.history.slice(-4));
+    }
+  }
+
+  function parsePatches(text) {
+    var t = strip(text).trim();
+    if (!/^<wibe-patch/i.test(t)) return null;
+    var re = /<wibe-patch\s+select="([^"]+)"\s*>([\s\S]*?)<\/wibe-patch>/gi;
+    var out = [], m;
+    while ((m = re.exec(t))) out.push({ select: m[1], html: m[2] });
+    return out.length ? out : null;
+  }
+
+  function withBridge(html) {
+    // inject at the TOP of body so the bridge (AudioContext wrapper, error
+    // reporting) is installed before any app code runs
+    var doc = strip(html);
+    var m = doc.match(/<body[^>]*>/i);
+    if (m) doc = doc.replace(m[0], m[0] + BRIDGE + ENGINE);
+    else doc = BRIDGE + ENGINE + doc;
+    return doc;
+  }
+
+  function mount(w, html) {
+    var raw = strip(html); // cache RAW html; bridge is injected at mount time
+    w.iframe.srcdoc = withBridge(raw);
+    state.cache[w.app] = { doc: raw, history: w.history.slice(), v: CACHE_V };
+    post({ control: "savecache", app: w.app, doc: raw, history: w.history, v: CACHE_V });
+  }
+
+  /* ============ window manager ============ */
+  function createWindow(app, icon, opts) {
+    opts = opts || {};
+    var id = "w" + (state.nextId++);
+    var el = document.createElement("div");
+    el.className = "win";
+    var W = opts.w || 760, H = opts.h || 500;
+    var off = (state.nextId % 7) * 26;
+    el.style.width = W + "px";
+    el.style.height = H + "px";
+    el.style.left = Math.max(8, Math.min(window.innerWidth - W - 8, 130 + off)) + "px";
+    el.style.top = Math.max(34, Math.min(window.innerHeight - H - 80, 70 + off)) + "px";
+    el.innerHTML =
+      '<div class="tbar">' +
+        '<div class="lights">' +
+          '<span class="lt red" data-act="close"></span>' +
+          '<span class="lt yel" data-act="min"></span>' +
+          '<span class="lt grn" data-act="zoom"></span>' +
+        '</div>' +
+        '<div class="ttitle">' + esc(icon) + " " + esc(app) + '</div>' +
+      '</div>' +
+      '<div class="wbody">' +
+        '<iframe sandbox="allow-scripts allow-same-origin" allow="camera *; microphone *"></iframe>' +
+        '<div class="preview"></div>' +
+        '<div class="genpill">✨ hallucinating ' + esc(app) + "…</div>" +
+        '<div class="glitch" title="">⚠️ glitched — re-imagine</div>' +
+        '<div class="veil"><div class="vsp">✨ re-imagining…</div></div>' +
+        '<div class="werr"><div style="font-size:34px">💥</div><div>vibes interrupted</div>' +
+          '<div class="werrmsg" style="color:#999;font-size:11px;max-width:90%"></div>' +
+          '<button data-act="retry">Try Again</button></div>' +
+      '</div>' +
+      '<div class="rsz"></div>';
+    winsEl.appendChild(el);
+
+    var w = {
+      id: id, app: app, icon: icon, el: el,
+      iframe: el.querySelector("iframe"),
+      previewEl: el.querySelector(".preview"),
+      errMsgEl: el.querySelector(".werrmsg"),
+      history: [], buf: "", raf: null, zoomed: null
+    };
+    state.wins[id] = w;
+
+    el.addEventListener("mousedown", function () { bringFront(w); }, true);
+    el.querySelector(".tbar").addEventListener("mousedown", function (e) {
+      if (e.target.classList.contains("lt")) return;
+      startDrag(w, e, "move");
+    });
+    el.querySelector(".rsz").addEventListener("mousedown", function (e) { startDrag(w, e, "size"); });
+    el.querySelectorAll(".lt").forEach(function (lt) {
+      lt.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var act = lt.getAttribute("data-act");
+        if (act === "close") closeWin(w);
+        if (act === "min") minimize(w);
+        if (act === "zoom") zoom(w);
+      });
+    });
+    el.querySelector(".glitch").addEventListener("click", function (e) {
+      e.stopPropagation();
+      regen(w);
+    });
+    el.querySelector('[data-act="retry"]').addEventListener("click", function () {
+      el.classList.remove("failed");
+      if (w.history.length && w.history[w.history.length - 1].role === "user") {
+        el.classList.add("updating");   // failed update: resend it
+        sendGen(w);
+      } else {
+        startCreate(w);                 // failed creation: try again
+      }
+    });
+
+    bringFront(w);
+    refreshDock();
+    return w;
+  }
+
+  function bringFront(w) {
+    if (state.frontId === w.id) return;
+    state.frontId = w.id;
+    w.el.style.zIndex = ++state.z;
+    Object.values(state.wins).forEach(function (x) {
+      x.el.classList.toggle("front", x.id === w.id);
+    });
+    $("mAppName").textContent = w.app;
+  }
+
+  function closeWin(w) {
+    var p = findGen(w.app);
+    if (p && p.win === w) p.win = null; // generation continues into the cache
+    delete state.wins[w.id];
+    w.el.remove();
+    if (state.frontId === w.id) {
+      state.frontId = null;
+      var rest = Object.values(state.wins).filter(function (x) { return !x.el.classList.contains("mini"); });
+      if (rest.length) bringFront(rest[rest.length - 1]);
+      else $("mAppName").textContent = "Finder";
+    }
+    refreshDock();
+  }
+
+  function minimize(w) {
+    w.el.classList.add("mini");
+    if (state.frontId === w.id) state.frontId = null;
+    refreshDock();
+  }
+
+  function restore(w) {
+    w.el.classList.remove("mini");
+    bringFront(w);
+  }
+
+  function zoom(w) {
+    if (w.zoomed) {
+      w.el.style.left = w.zoomed.l; w.el.style.top = w.zoomed.t;
+      w.el.style.width = w.zoomed.w; w.el.style.height = w.zoomed.h;
+      w.zoomed = null;
+    } else {
+      w.zoomed = { l: w.el.style.left, t: w.el.style.top, w: w.el.style.width, h: w.el.style.height };
+      w.el.style.left = "6px"; w.el.style.top = "32px";
+      w.el.style.width = (window.innerWidth - 12) + "px";
+      w.el.style.height = (window.innerHeight - 110) + "px";
+    }
+  }
+
+  function startDrag(w, e, mode) {
+    e.preventDefault();
+    bringFront(w);
+    document.body.classList.add("dragging");
+    var sx = e.clientX, sy = e.clientY;
+    var r = w.el.getBoundingClientRect();
+    function mm(ev) {
+      var dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (mode === "move") {
+        w.el.style.left = Math.max(-r.width + 80, r.left + dx) + "px";
+        w.el.style.top = Math.max(26, r.top + dy) + "px";
+      } else {
+        w.el.style.width = Math.max(260, r.width + dx) + "px";
+        w.el.style.height = Math.max(160, r.height + dy) + "px";
+      }
+    }
+    function mu() {
+      document.body.classList.remove("dragging");
+      document.removeEventListener("mousemove", mm);
+      document.removeEventListener("mouseup", mu);
+    }
+    document.addEventListener("mousemove", mm);
+    document.addEventListener("mouseup", mu);
+  }
+
+  /* ============ app lifecycle ============ */
+  function createMsg(app, hint) {
+    return {
+      role: "user",
+      content: JSON.stringify({
+        task: "create-app", app: app, hint: hint || "",
+        user: window.WIBE_USER || "user", time: new Date().toString()
+      })
+    };
+  }
+
+  function findGen(app) {
+    var ids = Object.keys(state.gen);
+    for (var i = 0; i < ids.length; i++) {
+      if (state.gen[ids[i]].app === app) return state.gen[ids[i]];
+    }
+    return null;
+  }
+
+  function startCreate(w) {
+    var p = findGen(w.app);
+    if (!p) {
+      p = { id: "g" + (state.nextId++), app: w.app, buf: "", win: null, raf: null,
+            history: [createMsg(w.app, w.hint)] };
+      state.gen[p.id] = p;
+      post({ id: p.id, messages: p.history });
+    }
+    p.win = w;
+    w.el.classList.add("generating");
+    if (p.buf) w.previewEl.innerHTML = previewHtml(p.buf);
+  }
+
+  /* background prefetch of dock apps, 2 generations at a time */
+  var pfQueue = [];
+  function prefetchAll() {
+    if (window.WIBE_PREFETCH === false) return;
+    APPS.forEach(function (a) {
+      if (!state.cache[a.name] && !findGen(a.name)) pfQueue.push(a);
+    });
+    pump();
+    pump();
+    pump();
+  }
+  function pump() {
+    if (Object.keys(state.gen).length >= 3) return;
+    var a = pfQueue.shift();
+    if (!a) return;
+    if (state.cache[a.name] || findGen(a.name)) { pump(); return; }
+    var p = { id: "g" + (state.nextId++), app: a.name, buf: "", win: null, raf: null,
+              history: [createMsg(a.name, a.hint)] };
+    state.gen[p.id] = p;
+    post({ id: p.id, messages: p.history });
+  }
+
+  function openApp(app, icon, hint, force) {
+    var existing = Object.values(state.wins).find(function (w) { return w.app === app; });
+    if (existing) {
+      if (force) { existing.hint = hint || existing.hint; regen(existing); }
+      else if (existing.el.classList.contains("mini")) restore(existing);
+      else bringFront(existing);
+      return;
+    }
+    var spec = APPS.find(function (a) { return a.name === app; }) || {};
+    var w = createWindow(app, icon || spec.icon || "✨", { w: spec.w, h: spec.h });
+    w.hint = hint || spec.hint || "";
+    if (force) {
+      delete state.cache[app];
+      post({ control: "delcache", app: app });
+      var p = findGen(app);
+      if (p) { p.win = null; delete state.gen[p.id]; }
+    }
+    var cached = state.cache[app];
+    if (cached) {
+      w.history = (cached.history || []).slice();
+      w.iframe.srcdoc = withBridge(cached.doc);   // instant, with the CURRENT bridge
+      return;
+    }
+    startCreate(w);
+  }
+
+  function updateApp(w, detail) {
+    if (w.el.classList.contains("generating") || w.el.classList.contains("updating")) return;
+    if (w.history.length && w.history[w.history.length - 1].role === "user") w.history.pop();
+    detail.time = new Date().toString();
+    w.history.push({ role: "user", content: JSON.stringify({ task: "update-app", event: detail }) });
+    trimHistory(w);
+    w.el.classList.add("updating");
+    sendGen(w);
+  }
+
+  function regen(w) {
+    delete state.cache[w.app];
+    post({ control: "delcache", app: w.app });
+    var p = findGen(w.app);
+    if (p) { p.win = null; delete state.gen[p.id]; }
+    w.history = [];
+    w.iframe.srcdoc = "";
+    w.previewEl.innerHTML = "";
+    w.el.classList.remove("updating", "failed", "glitched");
+    startCreate(w);
+  }
+
+  /* messages from app iframes */
+  window.addEventListener("message", function (e) {
+    var d = e.data || {};
+    var w = Object.values(state.wins).find(function (x) {
+      return x.iframe && x.iframe.contentWindow === e.source;
+    });
+    if (d.wibe === "event" && w) updateApp(w, d.detail);
+    else if (d.wibe === "open") openApp(String(d.app).slice(0, 60), "✨",
+      "An app requested by another app: " + String(d.app) + ". " + String(d.hint || ""));
+    else if (d.wibe === "focus" && w) bringFront(w);
+    else if (d.wibe === "jserror" && w) {
+      w.el.classList.add("glitched");
+      w.el.querySelector(".glitch").title = d.message || "";
+    }
+  });
+
+  /* ============ dock ============ */
+  function refreshDock() {
+    var dock = $("dock");
+    dock.innerHTML = "";
+    APPS.forEach(function (a) { dock.appendChild(dockIcon(a.name, a.icon)); });
+    // imagined apps currently open or cached
+    var extras = {};
+    Object.values(state.wins).forEach(function (w) {
+      if (!APPS.find(function (a) { return a.name === w.app; })) extras[w.app] = w.icon;
+    });
+    var names = Object.keys(extras);
+    if (names.length) {
+      var sep = document.createElement("div"); sep.className = "dsepv"; dock.appendChild(sep);
+      names.forEach(function (n) { dock.appendChild(dockIcon(n, extras[n])); });
+    }
+    var sep2 = document.createElement("div"); sep2.className = "dsepv"; dock.appendChild(sep2);
+    var im = document.createElement("div");
+    im.className = "dicon";
+    im.innerHTML = "✨<span class='tip'>Imagine…</span><span class='dot'></span>";
+    im.addEventListener("click", showImagine);
+    dock.appendChild(im);
+  }
+
+  function dockIcon(name, icon) {
+    var d = document.createElement("div");
+    d.className = "dicon";
+    d.innerHTML = esc(icon) + "<span class='tip'>" + esc(name) +
+      "</span><span class='dot'></span>";
+    var open = Object.values(state.wins).some(function (w) { return w.app === name; });
+    if (open) d.classList.add("running");
+    d.addEventListener("click", function (e) {
+      var spec = APPS.find(function (a) { return a.name === name; });
+      openApp(name, icon, spec && spec.hint, e.altKey); // Option-click forces re-imagine
+    });
+    return d;
+  }
+
+  /* ============ menu bar ============ */
+  var dropdown = $("dropdown");
+  var openMenu = null;
+
+  function front() { return state.wins[state.frontId] || null; }
+
+  function menuItems(name) {
+    var f = front();
+    var appName = f ? f.app : "Finder";
+    if (name === "apple") return [
+      { l: "About This wibe…", f: function () { $("aboutDlg").hidden = false; } },
+      { sep: 1 },
+      { l: "Sleep", f: function () { $("sleepveil").hidden = false; } },
+      { l: "Reboot wibeOS", f: function () { location.reload(); } },
+      { sep: 1 },
+      { l: "Quit wibeOS", k: "⌘Q", f: function () { post({ control: "quit" }); } }
+    ];
+    if (name === "app") return [
+      { l: "About " + appName, m: "App>About" },
+      { sep: 1 },
+      { l: "Close Window", k: "⌘W", f: function () { if (f) closeWin(f); } }
+    ];
+    if (name === "File") return [
+      { l: "New", m: "File>New" }, { l: "Open…", m: "File>Open" }, { l: "Save", m: "File>Save" }
+    ];
+    if (name === "Edit") return [
+      { l: "Undo", m: "Edit>Undo" }, { sep: 1 },
+      { l: "Cut", m: "Edit>Cut" }, { l: "Copy", m: "Edit>Copy" }, { l: "Paste", m: "Edit>Paste" },
+      { l: "Select All", m: "Edit>SelectAll" }
+    ];
+    if (name === "View") return [
+      { l: "Re-imagine " + appName, f: function () { if (f) regen(f); } }
+    ];
+    if (name === "Window") {
+      var items = [
+        { l: "Minimize", f: function () { if (f) minimize(f); } },
+        { l: "Zoom", f: function () { if (f) zoom(f); } }
+      ];
+      var ws = Object.values(state.wins);
+      if (ws.length) {
+        items.push({ sep: 1 });
+        ws.forEach(function (w) {
+          items.push({ l: (w.id === state.frontId ? "✓ " : "   ") + w.icon + " " + w.app,
+                       f: function () { restore(w); } });
+        });
+      }
+      return items;
+    }
+    if (name === "Help") return [{ l: appName + " Help", m: "Help>Help" }];
+    return [];
+  }
+
+  function showDropdown(mitem) {
+    var name = mitem.getAttribute("data-menu");
+    var items = menuItems(name);
+    dropdown.innerHTML = "";
+    items.forEach(function (it) {
+      if (it.sep) {
+        var s = document.createElement("div"); s.className = "dsep"; dropdown.appendChild(s);
+        return;
+      }
+      var d = document.createElement("div");
+      d.className = "ditem";
+      d.innerHTML = "<span>" + esc(it.l) + "</span>" + (it.k ? "<span class='key'>" + it.k + "</span>" : "");
+      d.addEventListener("click", function (e) {
+        e.stopPropagation();
+        hideDropdown();
+        if (it.f) it.f();
+        else if (it.m) {
+          var f = front();
+          if (f && f.iframe.contentWindow) f.iframe.contentWindow.postMessage({ wibe: "menu", item: it.m }, "*");
+        }
+      });
+      dropdown.appendChild(d);
+    });
+    var r = mitem.getBoundingClientRect();
+    dropdown.style.left = r.left + "px";
+    dropdown.style.top = "27px";
+    dropdown.hidden = false;
+    document.querySelectorAll(".mitem").forEach(function (m) { m.classList.remove("open"); });
+    mitem.classList.add("open");
+    openMenu = mitem;
+  }
+
+  function hideDropdown() {
+    dropdown.hidden = true;
+    if (openMenu) openMenu.classList.remove("open");
+    openMenu = null;
+  }
+
+  document.querySelectorAll(".mitem").forEach(function (m) {
+    m.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (openMenu === m) hideDropdown(); else showDropdown(m);
+    });
+    m.addEventListener("mouseenter", function () { if (openMenu && openMenu !== m) showDropdown(m); });
+  });
+  document.addEventListener("click", hideDropdown);
+  $("sleepveil").addEventListener("click", function () { $("sleepveil").hidden = true; });
+  $("aboutOk").addEventListener("click", function () { $("aboutDlg").hidden = true; });
+
+  /* keyboard */
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey && e.key === "w") { e.preventDefault(); var f = front(); if (f) closeWin(f); }
+  });
+
+  /* ============ imagine dialog ============ */
+  function showImagine() {
+    $("imagineDlg").hidden = false;
+    $("imagineInput").value = "";
+    setTimeout(function () { $("imagineInput").focus(); }, 50);
+  }
+  function conjure() {
+    var name = $("imagineInput").value.trim();
+    $("imagineDlg").hidden = true;
+    if (!name) return;
+    openApp(name.slice(0, 60), "✨",
+      'An app the user just imagined: "' + name + '". Interpret generously and build something delightful and convincing.');
+  }
+  $("imagineGo").addEventListener("click", conjure);
+  $("imagineCancel").addEventListener("click", function () { $("imagineDlg").hidden = true; });
+  $("imagineInput").addEventListener("keydown", function (e) { if (e.key === "Enter") conjure(); });
+
+  /* ============ clock ============ */
+  function tick() {
+    var d = new Date();
+    var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    var mons = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var h = d.getHours(), m = d.getMinutes();
+    $("clock").textContent = days[d.getDay()] + " " + mons[d.getMonth()] + " " + d.getDate() +
+      "  " + h + ":" + (m < 10 ? "0" : "") + m;
+  }
+  tick();
+  setInterval(tick, 5000);
+
+  /* ============ boot ============ */
+  window.addEventListener("load", function () {
+    refreshDock();
+    post({ control: "loadcache" });   // → wibeos.cacheLoaded → prefetchAll
+    requestAnimationFrame(function () { $("bfill").style.width = "100%"; });
+    setTimeout(function () { $("boot").classList.add("hidden"); }, 1300);
+  });
+})();
+</script>
+</body>
+</html>
