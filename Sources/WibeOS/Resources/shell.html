@@ -4,23 +4,30 @@
 <meta charset="utf-8">
 <title>wibeOS</title>
 <style>
+  :root { /* persona themes override these */
+    --wp: radial-gradient(1200px 800px at 70% 20%, #7b6cd9 0%, transparent 60%),
+          radial-gradient(1000px 700px at 20% 80%, #d96cb0 0%, transparent 55%),
+          linear-gradient(160deg, #1b1f3a 0%, #3a2a5d 45%, #16203c 100%);
+    --accent: #2f6fed;
+    --mb-bg: rgba(28,28,34,.55); --mb-fg: #fff;
+    --dock-bg: rgba(255,255,255,.22);
+    --win-bg: #f2f2f4;
+    --tbar-bg: linear-gradient(#e8e8ea, #dcdcdf); --tbar-fg: #4a4a4f;
+    --font: -apple-system, system-ui, sans-serif;
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden;
-               font-family: -apple-system, system-ui, sans-serif;
+               font-family: var(--font);
                -webkit-user-select: none; user-select: none; }
 
   /* ---------- Desktop ---------- */
-  #desktop { position: fixed; inset: 0;
-    background:
-      radial-gradient(1200px 800px at 70% 20%, #7b6cd9 0%, transparent 60%),
-      radial-gradient(1000px 700px at 20% 80%, #d96cb0 0%, transparent 55%),
-      linear-gradient(160deg, #1b1f3a 0%, #3a2a5d 45%, #16203c 100%); }
+  #desktop { position: fixed; inset: 0; background: var(--wp); transition: background .6s; }
 
   /* ---------- Menu bar ---------- */
   #menubar { position: fixed; top: 0; left: 0; right: 0; height: 26px; z-index: 1000;
     display: flex; align-items: center; padding: 0 12px; gap: 2px;
-    background: rgba(28,28,34,.55); backdrop-filter: blur(22px);
-    color: #fff; font-size: 13px; }
+    background: var(--mb-bg); backdrop-filter: blur(22px);
+    color: var(--mb-fg); font-size: 13px; }
   .mitem { padding: 2px 10px; border-radius: 5px; cursor: default; white-space: nowrap; }
   .mitem.bold { font-weight: 700; }
   .mitem.open, .mitem:active { background: rgba(255,255,255,.22); }
@@ -31,27 +38,27 @@
     box-shadow: 0 14px 40px rgba(0,0,0,.45); color: #fff; font-size: 13px; }
   #dropdown[hidden] { display: none; }
   .ditem { padding: 4px 10px; border-radius: 5px; display: flex; justify-content: space-between; gap: 24px; }
-  .ditem:hover { background: #2f6fed; }
+  .ditem:hover { background: var(--accent); }
   .ditem .key { color: rgba(255,255,255,.5); }
   .dsep { height: 1px; background: rgba(255,255,255,.15); margin: 5px 8px; }
 
   /* ---------- Windows ---------- */
   .win { position: absolute; min-width: 260px; min-height: 160px;
-    background: #f2f2f4; border-radius: 11px; overflow: hidden;
+    background: var(--win-bg); border-radius: 11px; overflow: hidden;
     box-shadow: 0 22px 70px rgba(0,0,0,.5), 0 0 0 .5px rgba(255,255,255,.25);
     display: flex; flex-direction: column; }
   .win.front { box-shadow: 0 30px 90px rgba(0,0,0,.62), 0 0 0 .5px rgba(255,255,255,.35); }
   .tbar { height: 30px; flex: 0 0 30px; display: flex; align-items: center;
-    background: linear-gradient(#e8e8ea, #dcdcdf); border-bottom: 1px solid #c8c8cc;
+    background: var(--tbar-bg); border-bottom: 1px solid rgba(0,0,0,.18);
     cursor: default; position: relative; }
-  .win:not(.front) .tbar { background: #ececee; }
+  .win:not(.front) .tbar { filter: saturate(.5) contrast(.96); }
   .lights { display: flex; gap: 8px; padding: 0 10px; }
   .lt { width: 12px; height: 12px; border-radius: 50%; border: .5px solid rgba(0,0,0,.15); }
   .lt.red { background: #ff5f57; } .lt.yel { background: #febc2e; } .lt.grn { background: #28c840; }
   .win:not(.front) .lt { background: #d0d0d3; }
   .lt:hover { filter: brightness(.85); }
   .ttitle { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px;
-    font-weight: 600; color: #4a4a4f; pointer-events: none; }
+    font-weight: 600; color: var(--tbar-fg); pointer-events: none; }
   .wbody { flex: 1; position: relative; background: #fff; }
   .wbody iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
   .rsz { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; z-index: 5; }
@@ -87,14 +94,14 @@
     align-items: center; justify-content: center; background: #1a1b20; color: #eee;
     font-size: 13px; z-index: 6; padding: 20px; text-align: center; }
   .win.failed .werr { display: flex; }
-  .werr button { background: #2f6fed; color: #fff; border: 0; border-radius: 6px;
+  .werr button { background: var(--accent); color: #fff; border: 0; border-radius: 6px;
     padding: 6px 18px; font-size: 13px; cursor: pointer; }
 
   /* ---------- Dock ---------- */
   #dockwrap { position: fixed; bottom: 8px; left: 0; right: 0; display: flex;
     justify-content: center; z-index: 1000; pointer-events: none; }
   #dock { display: flex; align-items: flex-end; gap: 4px; padding: 6px 10px;
-    background: rgba(255,255,255,.22); backdrop-filter: blur(24px);
+    background: var(--dock-bg); backdrop-filter: blur(24px);
     border: 1px solid rgba(255,255,255,.25); border-radius: 20px; pointer-events: auto; }
   .dicon { font-size: 38px; line-height: 1; padding: 2px 4px; position: relative;
     cursor: default; transition: transform .12s ease; transform-origin: bottom center; }
@@ -120,12 +127,37 @@
   .dlgbox p { color: #777; margin: 4px 0 14px; }
   .dlgbox input { width: 100%; padding: 7px 10px; font-size: 13px; border: 1px solid #ccc;
     border-radius: 7px; margin-bottom: 14px; -webkit-user-select: text; user-select: text; }
-  .dlgbox button { background: #2f6fed; color: #fff; border: 0; border-radius: 7px;
+  .dlgbox button { background: var(--accent); color: #fff; border: 0; border-radius: 7px;
     padding: 7px 20px; font-size: 13px; cursor: pointer; margin: 0 4px; }
   .dlgbox button.alt { background: #e3e3e6; color: #333; }
 
   #sleepveil { position: fixed; inset: 0; background: #000; z-index: 3000; }
   #sleepveil[hidden] { display: none; }
+
+  /* ---------- Login ---------- */
+  #login { position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 38px; transition: opacity .5s;
+    background:
+      radial-gradient(1200px 800px at 70% 20%, rgba(123,108,217,.55) 0%, transparent 60%),
+      radial-gradient(1000px 700px at 20% 80%, rgba(217,108,176,.45) 0%, transparent 55%),
+      linear-gradient(160deg, #0e1124 0%, #221739 45%, #0b1226 100%); }
+  #login.hidden { opacity: 0; pointer-events: none; }
+  #loginclock { color: rgba(255,255,255,.85); font-size: 56px; font-weight: 200; letter-spacing: 1px; }
+  #loginhint { color: rgba(255,255,255,.45); font-size: 13px; margin-top: -26px; }
+  #personas { display: flex; gap: 34px; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+  .pav { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
+  .pav .pface { width: 88px; height: 88px; border-radius: 50%; font-size: 48px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.25);
+    backdrop-filter: blur(8px); transition: transform .15s, border-color .15s; }
+  .pav:hover .pface { transform: scale(1.08); border-color: rgba(255,255,255,.7); }
+  .pav .pname { color: #fff; font-size: 14px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+  .pav .pdesc { color: rgba(255,255,255,.45); font-size: 11px; max-width: 140px;
+    text-align: center; line-height: 1.3; }
+  .dlgbox textarea { width: 100%; padding: 7px 10px; font-size: 13px; border: 1px solid #ccc;
+    border-radius: 7px; margin-bottom: 14px; resize: none; font-family: inherit;
+    -webkit-user-select: text; user-select: text; }
+  #personaDlg { z-index: 4500; } /* must sit above the login screen (4000) */
 
   /* ---------- Boot ---------- */
   #boot { position: fixed; inset: 0; background: #000; z-index: 5000; color: #fff;
@@ -184,6 +216,27 @@
 
   <div id="sleepveil" hidden></div>
 
+  <div id="login" class="hidden">
+    <div id="loginclock"></div>
+    <div id="loginhint">who's vibing?</div>
+    <div id="personas"></div>
+  </div>
+
+  <div class="sysdlg" id="personaDlg" hidden>
+    <div class="dlgbox">
+      <div style="font-size:40px">🪪</div>
+      <h2>New Persona</h2>
+      <p>The whole OS will hallucinate differently for them.</p>
+      <input id="pEmoji" placeholder="Emoji (e.g. 🧙)" maxlength="4" style="width:120px">
+      <input id="pName" placeholder="Name" maxlength="24">
+      <textarea id="pDesc" rows="3" placeholder="Who are they? e.g. 'A medieval wizard discovering computers for the first time'"></textarea>
+      <div>
+        <button class="alt" id="pCancel">Cancel</button>
+        <button id="pCreate">Create</button>
+      </div>
+    </div>
+  </div>
+
   <div id="boot">
     <div id="blogo"></div>
     <div id="bbar"><div id="bfill"></div></div>
@@ -195,8 +248,94 @@
   "use strict";
 
   /* ============ state ============ */
-  var CACHE_V = 4; // bump to invalidate cached apps when the bridge/prompt changes
-  var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {} };
+  var CACHE_V = 5; // bump to invalidate cached apps when the bridge/prompt changes
+  var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {}, persona: null };
+
+  /* ============ personas ============ */
+  var DEFAULT_PERSONAS = [
+    { emoji: "👨‍💻", name: (window.WIBE_USER || "Hans").split(" ")[0],
+      desc: "The Mac's real owner: a tech-savvy builder who likes clean apps, synthwave and tinkering." },
+    { emoji: "👵", name: "Grandma",
+      desc: "A sweet 78-year-old grandmother. Huge fonts, simple words, emails from family, recipes, garden photos, solitaire. Slightly confused by technology." },
+    { emoji: "😎", name: "Zeke",
+      desc: "A 1998 hacker teenager. Everything is late-90s web: pixel fonts, neon on black, Winamp skins, IRC, conspiracy bookmarks, MIDI vibes." },
+    { emoji: "💼", name: "The CEO",
+      desc: "A ruthless tech CEO. Dashboards, KPIs, hostile-takeover spreadsheets, an inbox full of lawyers and yes-men, a motivational quotes app." }
+  ];
+  var personas = DEFAULT_PERSONAS.slice();
+
+  /* random persona generator: character × twist × name */
+  var RP_WHO = [
+    { e: "🧛", w: "a 400-year-old vampire" }, { e: "🧙", w: "a medieval wizard" },
+    { e: "👽", w: "an alien exchange student" }, { e: "🤖", w: "a robot pretending to be human" },
+    { e: "🏴‍☠️", w: "a retired pirate captain" }, { e: "🕵️", w: "a paranoid private detective" },
+    { e: "👻", w: "a ghost haunting this computer" }, { e: "🦖", w: "a surprisingly literate dinosaur" },
+    { e: "👑", w: "a deposed monarch in exile" }, { e: "🧜", w: "a mermaid working remotely" },
+    { e: "🥷", w: "a ninja on sabbatical" }, { e: "🧑‍🚀", w: "an astronaut stuck on a space station" },
+    { e: "🐱", w: "a cat that learned to type" }, { e: "🎪", w: "a circus ringmaster" },
+    { e: "🧟", w: "a zombie with excellent manners" }, { e: "⏰", w: "a time traveler from 1850" },
+    { e: "🌋", w: "a doomsday prepper" }, { e: "🎭", w: "a melodramatic stage actor" },
+    { e: "🔮", w: "a fortune teller whose predictions are always slightly off" },
+    { e: "🦸", w: "a superhero on their day off" }
+  ];
+  var RP_TWIST = [
+    "who just discovered online shopping", "obsessed with productivity apps",
+    "running a suspicious side business", "writing a tell-all memoir",
+    "convinced the computer is haunted", "trying to go viral",
+    "planning an elaborate birthday party", "learning to code at the worst possible time",
+    "deeply invested in fantasy football", "secretly very lonely and very online",
+    "in a heated feud with a neighbor", "training for a marathon they will not run",
+    "addicted to true-crime podcasts", "who answers every email with a poem",
+    "documenting everything for posterity", "starting a conspiracy-theory newsletter",
+    "who thinks every app is a person they must be polite to",
+    "attempting to monetize their hobbies", "perpetually 'about to start' a novel",
+    "convinced they are the main character"
+  ];
+  var RP_NAMES = ["Morwenna", "Bartholomew", "Zyx", "Unit-7", "Calico Jack", "Vera", "Casper",
+    "Rexford", "Leopold III", "Coralie", "Shadow", "Yuri", "Mittens", "Maximiliano", "Gerald",
+    "Octavia", "Bunker Bill", "Dorian", "Madame Esme", "Captain Dave", "Pixel", "Agnes",
+    "Thaddeus", "Nova", "Reginald", "Wanda", "Boris", "Seraphina", "Chip", "Ezekiel"];
+
+  function randomPersona() {
+    function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+    var who = pick(RP_WHO), twist = pick(RP_TWIST);
+    var name = pick(RP_NAMES), n = 2;
+    while (personas.some(function (p) { return p.name === name; })) name = pick(RP_NAMES) + " " + (n++);
+    var desc = who.w.charAt(0).toUpperCase() + who.w.slice(1) + " " + twist + ".";
+    return { emoji: who.e, name: name, desc: desc };
+  }
+
+  var themes = {};     // personaName -> theme JSON
+  var installed = {};  // personaName -> [{name, icon, hint}]
+
+  function cacheKey(app) {
+    return (state.persona ? state.persona.name : "_") + "::" + app;
+  }
+  function savePrefs() {
+    post({ control: "saveprefs", prefs: { personas: personas, themes: themes, installed: installed } });
+  }
+
+  /* ============ themes ============ */
+  var THEME_VARS = {
+    wallpaper: "--wp", accent: "--accent", menubarBg: "--mb-bg", menubarFg: "--mb-fg",
+    dockBg: "--dock-bg", winBg: "--win-bg", tbarBg: "--tbar-bg", tbarFg: "--tbar-fg", font: "--font"
+  };
+  function applyTheme(t) {
+    var r = document.documentElement.style;
+    Object.keys(THEME_VARS).forEach(function (k) {
+      if (t && typeof t[k] === "string" && t[k].length < 600) r.setProperty(THEME_VARS[k], t[k]);
+      else r.removeProperty(THEME_VARS[k]); // fall back to :root default
+    });
+    state.theme = (t && t.accent) ? t : null;
+  }
+  function requestTheme(p, cb) {
+    var g = { id: "g" + (state.nextId++), kind: "theme", app: "__theme__", buf: "",
+              win: null, raf: null, cb: cb,
+              history: [{ role: "user", content: JSON.stringify(
+                { task: "create-theme", name: p.name, persona: p.desc }) }] };
+    state.gen[g.id] = g;
+    post({ id: g.id, messages: g.history });
+  }
   var winsEl = document.getElementById("windows");
 
   function $(id) { return document.getElementById(id); }
@@ -223,7 +362,9 @@
     { name: "Music", icon: "🎵", w: 880, h: 560,
       hint: "Music player: sidebar, album grid of invented artists/albums with CSS-art covers (static HTML), now-playing bar. Playback uses the OS music engine: wibe.music.play({title, artist, genre}) on track click, pause/resume/setVolume wired to the controls, and an animated equalizer driven by wibe.music.getLevels() polled in requestAnimationFrame. Give each invented track a genre (pop/rock/lofi/hiphop/edm/ambient) so songs sound distinct. All local." },
     { name: "Terminal", icon: "⬛", w: 700, h: 450,
-      hint: "Terminal (dark, green-on-black, blocky cursor). Implement ls, cd, cat, pwd, echo, whoami, date, clear, uname, neofetch (with wibeOS ASCII art) locally in JS against a small fake filesystem. Unknown commands print witty plausible output locally. Prompt: hans@wibeos ~ %" },
+      hint: "Terminal (dark, green-on-black, blocky cursor). Implement ls, cd, cat, pwd, echo, whoami, date, clear, uname, neofetch (with wibeOS ASCII art) locally in JS against a small fake filesystem. Unknown commands print witty plausible output locally. Prompt: <persona's lowercase first name>@wibeos ~ %" },
+    { name: "App Store", icon: "🛍️", w: 980, h: 640,
+      hint: "The wibeOS App Store, tailored entirely to the logged-in persona: featured banner, category chips, grid of 9-12 invented apps THIS persona would crave — emoji icon, name, tagline, star rating, price (Free/$4.99), one funny review quote each. Every card has a Get button: on click call wibe.install(appName, emoji, oneLineAppDescription), then turn the button into Open which calls wibe.open(appName, sameDescription). Static HTML + local JS only." },
     { name: "Trash", icon: "🗑", w: 540, h: 380,
       hint: "The Trash window: a few comically regrettable deleted files with sizes and dates. Empty Trash works locally with a satisfying poof animation." }
   ];
@@ -259,7 +400,8 @@
     "if(d.wibe==='patch'){(d.patches||[]).forEach(function(p){" +
     "var el=document.querySelector(p.select);if(el)el.innerHTML=p.html;});}});" +
     "window.wibe={event:function(a,data){parent.postMessage({wibe:'event',detail:{action:a,data:data===undefined?null:data,inputs:inputs()}},'*');}," +
-    "open:function(app,hint){parent.postMessage({wibe:'open',app:app,hint:hint||''},'*');}};" +
+    "open:function(app,hint){parent.postMessage({wibe:'open',app:app,hint:hint||''},'*');}," +
+    "install:function(app,icon,hint){parent.postMessage({wibe:'install',app:app,icon:icon||'✨',hint:hint||''},'*');}};" +
     /* built-in, tested camera API so hallucinated apps can't get it wrong */
     "window.wibe.camera={_s:null," +
     "start:function(video){return navigator.mediaDevices.getUserMedia({video:true}).then(function(s){" +
@@ -689,7 +831,13 @@
         if (map[k] && map[k].v === CACHE_V) state.cache[k] = map[k];
         // stale-version entries are ignored → prefetch regenerates them
       });
-      prefetchAll();
+      // prefetch starts after login, per persona
+    },
+    prefsLoaded: function (p) {
+      if (p && p.personas && p.personas.length) personas = p.personas;
+      if (p && p.themes) themes = p.themes;
+      if (p && p.installed) installed = p.installed;
+      renderLogin();
     },
     chunk: function (id, t) {
       var p = state.gen[id];
@@ -708,12 +856,24 @@
     },
     done: function (id) {
       var p = state.gen[id];
+      if (p && p.kind === "theme") {
+        delete state.gen[id];
+        var th = null;
+        try { th = JSON.parse(strip(p.buf).replace(/^[^{]*/, "").replace(/[^}]*$/, "")); } catch (e) {}
+        if (th) {
+          applyTheme(th);
+          if (state.persona) { themes[state.persona.name] = th; savePrefs(); }
+        }
+        if (p.cb) p.cb();
+        pump();
+        return;
+      }
       if (p) {
         delete state.gen[id];
         p.history.push({ role: "assistant", content: p.buf });
         var raw = strip(p.buf); // cache RAW html; bridge is injected at mount time
-        state.cache[p.app] = { doc: raw, history: p.history.slice(), v: CACHE_V };
-        post({ control: "savecache", app: p.app, doc: raw, history: p.history, v: CACHE_V });
+        state.cache[p.ck] = { doc: raw, history: p.history.slice(), v: CACHE_V };
+        post({ control: "savecache", app: p.ck, doc: raw, history: p.history, v: CACHE_V });
         if (p.win && state.wins[p.win.id]) {
           p.win.history = p.history.slice();
           p.win.iframe.srcdoc = withBridge(raw);
@@ -739,6 +899,12 @@
     },
     fail: function (id, msg) {
       var p = state.gen[id];
+      if (p && p.kind === "theme") {
+        delete state.gen[id];
+        if (p.cb) p.cb();   // default theme stays; carry on
+        pump();
+        return;
+      }
       if (p) {
         delete state.gen[id];
         if (p.win && state.wins[p.win.id]) {
@@ -793,8 +959,8 @@
   function mount(w, html) {
     var raw = strip(html); // cache RAW html; bridge is injected at mount time
     w.iframe.srcdoc = withBridge(raw);
-    state.cache[w.app] = { doc: raw, history: w.history.slice(), v: CACHE_V };
-    post({ control: "savecache", app: w.app, doc: raw, history: w.history, v: CACHE_V });
+    state.cache[cacheKey(w.app)] = { doc: raw, history: w.history.slice(), v: CACHE_V };
+    post({ control: "savecache", app: cacheKey(w.app), doc: raw, history: w.history, v: CACHE_V });
   }
 
   /* ============ window manager ============ */
@@ -953,7 +1119,10 @@
       role: "user",
       content: JSON.stringify({
         task: "create-app", app: app, hint: hint || "",
-        user: window.WIBE_USER || "user", time: new Date().toString()
+        user: state.persona ? state.persona.name : (window.WIBE_USER || "user"),
+        persona: state.persona ? state.persona.desc : "",
+        theme: state.theme ? { accent: state.theme.accent, dark: !!state.theme.dark } : null,
+        time: new Date().toString()
       })
     };
   }
@@ -969,7 +1138,7 @@
   function startCreate(w) {
     var p = findGen(w.app);
     if (!p) {
-      p = { id: "g" + (state.nextId++), app: w.app, buf: "", win: null, raf: null,
+      p = { id: "g" + (state.nextId++), app: w.app, ck: cacheKey(w.app), buf: "", win: null, raf: null,
             history: [createMsg(w.app, w.hint)] };
       state.gen[p.id] = p;
       post({ id: p.id, messages: p.history });
@@ -983,8 +1152,9 @@
   var pfQueue = [];
   function prefetchAll() {
     if (window.WIBE_PREFETCH === false) return;
+    pfQueue.length = 0;
     APPS.forEach(function (a) {
-      if (!state.cache[a.name] && !findGen(a.name)) pfQueue.push(a);
+      if (!state.cache[cacheKey(a.name)] && !findGen(a.name)) pfQueue.push(a);
     });
     pump();
     pump();
@@ -994,8 +1164,8 @@
     if (Object.keys(state.gen).length >= 3) return;
     var a = pfQueue.shift();
     if (!a) return;
-    if (state.cache[a.name] || findGen(a.name)) { pump(); return; }
-    var p = { id: "g" + (state.nextId++), app: a.name, buf: "", win: null, raf: null,
+    if (state.cache[cacheKey(a.name)] || findGen(a.name)) { pump(); return; }
+    var p = { id: "g" + (state.nextId++), app: a.name, ck: cacheKey(a.name), buf: "", win: null, raf: null,
               history: [createMsg(a.name, a.hint)] };
     state.gen[p.id] = p;
     post({ id: p.id, messages: p.history });
@@ -1013,12 +1183,12 @@
     var w = createWindow(app, icon || spec.icon || "✨", { w: spec.w, h: spec.h });
     w.hint = hint || spec.hint || "";
     if (force) {
-      delete state.cache[app];
-      post({ control: "delcache", app: app });
+      delete state.cache[cacheKey(app)];
+      post({ control: "delcache", app: cacheKey(app) });
       var p = findGen(app);
       if (p) { p.win = null; delete state.gen[p.id]; }
     }
-    var cached = state.cache[app];
+    var cached = state.cache[cacheKey(app)];
     if (cached) {
       w.history = (cached.history || []).slice();
       w.iframe.srcdoc = withBridge(cached.doc);   // instant, with the CURRENT bridge
@@ -1038,8 +1208,8 @@
   }
 
   function regen(w) {
-    delete state.cache[w.app];
-    post({ control: "delcache", app: w.app });
+    delete state.cache[cacheKey(w.app)];
+    post({ control: "delcache", app: cacheKey(w.app) });
     var p = findGen(w.app);
     if (p) { p.win = null; delete state.gen[p.id]; }
     w.history = [];
@@ -1059,6 +1229,15 @@
     else if (d.wibe === "open") openApp(String(d.app).slice(0, 60), "✨",
       "An app requested by another app: " + String(d.app) + ". " + String(d.hint || ""));
     else if (d.wibe === "focus" && w) bringFront(w);
+    else if (d.wibe === "install" && state.persona) {
+      var nm = String(d.app).slice(0, 40), ic = String(d.icon || "✨").slice(0, 8);
+      var list = installed[state.persona.name] = installed[state.persona.name] || [];
+      if (!list.some(function (a) { return a.name === nm; })) {
+        list.push({ name: nm, icon: ic, hint: String(d.hint || "").slice(0, 300) });
+        savePrefs();
+        refreshDock();
+      }
+    }
     else if (d.wibe === "jserror" && w) {
       w.el.classList.add("glitched");
       w.el.querySelector(".glitch").title = d.message || "";
@@ -1070,10 +1249,17 @@
     var dock = $("dock");
     dock.innerHTML = "";
     APPS.forEach(function (a) { dock.appendChild(dockIcon(a.name, a.icon)); });
-    // imagined apps currently open or cached
+    // apps installed from the App Store (per persona)
+    var inst = (state.persona && installed[state.persona.name]) || [];
+    if (inst.length) {
+      var sep0 = document.createElement("div"); sep0.className = "dsepv"; dock.appendChild(sep0);
+      inst.forEach(function (a) { dock.appendChild(dockIcon(a.name, a.icon, a.hint, true)); });
+    }
+    // imagined apps currently open
     var extras = {};
     Object.values(state.wins).forEach(function (w) {
-      if (!APPS.find(function (a) { return a.name === w.app; })) extras[w.app] = w.icon;
+      if (!APPS.find(function (a) { return a.name === w.app; }) &&
+          !inst.some(function (a) { return a.name === w.app; })) extras[w.app] = w.icon;
     });
     var names = Object.keys(extras);
     if (names.length) {
@@ -1088,7 +1274,7 @@
     dock.appendChild(im);
   }
 
-  function dockIcon(name, icon) {
+  function dockIcon(name, icon, hint, removable) {
     var d = document.createElement("div");
     d.className = "dicon";
     d.innerHTML = esc(icon) + "<span class='tip'>" + esc(name) +
@@ -1097,8 +1283,19 @@
     if (open) d.classList.add("running");
     d.addEventListener("click", function (e) {
       var spec = APPS.find(function (a) { return a.name === name; });
-      openApp(name, icon, spec && spec.hint, e.altKey); // Option-click forces re-imagine
+      openApp(name, icon, hint || (spec && spec.hint), e.altKey); // Option-click forces re-imagine
     });
+    if (removable) {
+      d.addEventListener("contextmenu", function (e) {
+        e.preventDefault();
+        if (state.persona && confirm('Remove "' + name + '" from the Dock?')) {
+          installed[state.persona.name] = (installed[state.persona.name] || [])
+            .filter(function (a) { return a.name !== name; });
+          savePrefs();
+          refreshDock();
+        }
+      });
+    }
     return d;
   }
 
@@ -1117,6 +1314,7 @@
       { l: "Sleep", f: function () { $("sleepveil").hidden = false; } },
       { l: "Reboot wibeOS", f: function () { location.reload(); } },
       { sep: 1 },
+      { l: "Log Out " + (state.persona ? state.persona.name : "") + "…", f: logout },
       { l: "Quit wibeOS", k: "⌘Q", f: function () { post({ control: "quit" }); } }
     ];
     if (name === "app") return [
@@ -1225,6 +1423,96 @@
   $("imagineCancel").addEventListener("click", function () { $("imagineDlg").hidden = true; });
   $("imagineInput").addEventListener("keydown", function (e) { if (e.key === "Enter") conjure(); });
 
+  /* ============ login / personas ============ */
+  function renderLogin() {
+    var box = $("personas");
+    box.innerHTML = "";
+    personas.forEach(function (p, i) {
+      var d = document.createElement("div");
+      d.className = "pav";
+      d.innerHTML = '<div class="pface">' + esc(p.emoji || "🙂") + '</div>' +
+        '<div class="pname">' + esc(p.name) + '</div>' +
+        '<div class="pdesc">' + esc(p.desc.slice(0, 60)) + (p.desc.length > 60 ? "…" : "") + '</div>';
+      d.addEventListener("click", function () { login(p); });
+      d.addEventListener("contextmenu", function (e) {  // right-click to remove custom personas
+        e.preventDefault();
+        if (i >= DEFAULT_PERSONAS.length || personas.length > 1) {
+          if (confirm("Remove persona “" + p.name + "”?")) {
+            personas.splice(i, 1); savePrefs(); renderLogin();
+          }
+        }
+      });
+      box.appendChild(d);
+    });
+    var add = document.createElement("div");
+    add.className = "pav";
+    add.innerHTML = '<div class="pface" style="font-size:40px;color:#fff">+</div>' +
+      '<div class="pname">New Persona</div><div class="pdesc">hallucinate as anyone</div>';
+    add.addEventListener("click", function () {
+      $("personaDlg").hidden = false;
+      setTimeout(function () { $("pName").focus(); }, 50);
+    });
+    box.appendChild(add);
+
+    var dice = document.createElement("div");
+    dice.className = "pav";
+    dice.innerHTML = '<div class="pface">🎲</div>' +
+      '<div class="pname">Surprise Me</div><div class="pdesc">roll a random persona</div>';
+    dice.addEventListener("click", function () {
+      var p = randomPersona();
+      personas.push(p);
+      savePrefs();
+      login(p);   // straight in — they'll meet themselves via their apps
+    });
+    box.appendChild(dice);
+  }
+
+  function login(p) {
+    state.persona = p;
+    $("login").classList.add("hidden");
+    $("mAppName").textContent = "Finder";
+    refreshDock(); // show this persona's installed apps
+    if (themes[p.name]) {
+      applyTheme(themes[p.name]);
+      prefetchAll();
+    } else {
+      applyTheme(null);
+      requestTheme(p, prefetchAll); // theme first, so prefetched apps can match it
+    }
+  }
+
+  function logout() {
+    Object.values(state.wins).forEach(function (w) { closeWin(w); });
+    Object.values(state.gen).forEach(function (p) { p.win = null; }); // finish into cache silently
+    state.persona = null;
+    pfQueue.length = 0;
+    applyTheme(null);
+    refreshDock();
+    $("login").classList.remove("hidden");
+  }
+
+  $("pCreate").addEventListener("click", function () {
+    var name = $("pName").value.trim();
+    if (!name) return;
+    personas.push({
+      emoji: $("pEmoji").value.trim() || "✨",
+      name: name.slice(0, 24),
+      desc: $("pDesc").value.trim() || ("Someone called " + name + ".")
+    });
+    savePrefs();
+    renderLogin();
+    $("personaDlg").hidden = true;
+    $("pEmoji").value = ""; $("pName").value = ""; $("pDesc").value = "";
+  });
+  $("pCancel").addEventListener("click", function () { $("personaDlg").hidden = true; });
+
+  function loginClock() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    $("loginclock").textContent = h + ":" + (m < 10 ? "0" : "") + m;
+  }
+  setInterval(loginClock, 5000);
+  loginClock();
+
   /* ============ clock ============ */
   function tick() {
     var d = new Date();
@@ -1240,9 +1528,14 @@
   /* ============ boot ============ */
   window.addEventListener("load", function () {
     refreshDock();
-    post({ control: "loadcache" });   // → wibeos.cacheLoaded → prefetchAll
+    renderLogin();
+    post({ control: "loadcache" });
+    post({ control: "loadprefs" });   // → wibeos.prefsLoaded → renderLogin
     requestAnimationFrame(function () { $("bfill").style.width = "100%"; });
-    setTimeout(function () { $("boot").classList.add("hidden"); }, 1300);
+    setTimeout(function () {
+      $("boot").classList.add("hidden");
+      $("login").classList.remove("hidden");
+    }, 1300);
   });
 })();
 </script>

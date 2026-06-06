@@ -27,6 +27,23 @@ make app          # build WibeOS.app, then: open WibeOS.app
 On first launch it asks for your API key (stored in the app's preferences;
 or set `ANTHROPIC_API_KEY` in the environment instead).
 
+## App Store & themes
+
+The dock has an App Store stocked entirely with apps invented for whoever is
+logged in — Get installs them to the dock permanently (per persona;
+right-click a dock icon to remove). On first login each persona also gets a
+full OS theme hallucinated for them — wallpaper, accent, menu bar, dock,
+window chrome, fonts — and apps are told the accent/dark-mode so they match.
+
+## Personas
+
+Boot lands on a login screen. Who you log in as changes *everything*: the
+persona is injected into every hallucination, so Grandma's Mail is chain
+letters in giant fonts while the hacker kid's whole machine is neon-on-black
+1998. Each persona gets its own app cache. Click **+** to invent new personas
+("a medieval wizard discovering computers"); right-click an avatar to remove
+it. Log out via the  menu.
+
 ## Use
 
 - Click dock icons to "launch" apps — you watch the HTML stream by as Claude

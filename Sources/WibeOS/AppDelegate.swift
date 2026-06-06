@@ -11,6 +11,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     (desktop, menu bar, dock, window chrome) is real and local; YOU generate the applications \
     that run inside windows. You receive a request to create or update ONE app.
 
+    PERSONA: every request includes a "persona" — who is logged into this OS. This is the \
+    single most important flavor input. Tailor EVERYTHING to them: their files, emails, \
+    playlists, bookmarks, browsing history, terminal username, app aesthetics, font sizes, \
+    language and tone. A grandmother's Mail looks nothing like a hacker kid's. Commit fully.
+
+    THEME (task "create-theme"): respond ONLY with a JSON object — no HTML, no markdown — \
+    defining a bold, characterful OS theme for the persona:
+    {"wallpaper": "<CSS background: layered gradients>", "accent": "#hex", "dark": true|false, \
+    "menubarBg": "rgba(...)", "menubarFg": "#hex", "dockBg": "rgba(...)", "winBg": "#hex", \
+    "tbarBg": "<CSS background>", "tbarFg": "#hex", "font": "<CSS font-family stack>"}
+    Commit hard to the persona: a hacker gets phosphor-green on black with monospace \
+    everywhere; a grandmother gets warm florals, cream surfaces and large-feeling cozy \
+    serifs; a CEO gets cold austere graphite. Keep text readable against its background.
+
+    If a create-app request includes a "theme" field ({accent, dark}), match the OS: use \
+    the accent for primary buttons/selections and choose light or dark surfaces accordingly.
+
     CREATE (task "create-app"): respond with a complete standalone HTML document with ALL CSS \
     and JavaScript inline. The app must actually WORK locally: a calculator computes, notes \
     edit, a game plays. Make it look like a polished native macOS app (system font stack \
@@ -228,9 +245,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             if let app = obj["app"] as? String {
                 try? FileManager.default.removeItem(at: cacheFile(app))
             }
+        case "saveprefs":
+            if let prefs = obj["prefs"],
+               let data = try? JSONSerialization.data(withJSONObject: prefs) {
+                try? data.write(to: prefsFile)
+            }
+        case "loadprefs":
+            if let data = try? Data(contentsOf: prefsFile),
+               let json = String(data: data, encoding: .utf8) {
+                push("window.wibeos.prefsLoaded(\(json))")
+            } else {
+                push("window.wibeos.prefsLoaded({})")
+            }
         default:
             break
         }
+    }
+
+    var prefsFile: URL {
+        cacheDir.deletingLastPathComponent().appendingPathComponent("prefs.json")
     }
 
     func loadCache() {
@@ -264,6 +297,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         DispatchQueue.main.async {
             self.webView.evaluateJavaScript(js, completionHandler: nil)
         }
+    }
+
+    // MARK: - JS dialogs (alert/confirm need native panels in WKWebView)
+
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "wibeOS"
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+        completionHandler()
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "wibeOS"
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Cancel")
+        completionHandler(alert.runModal() == .alertFirstButtonReturn)
     }
 
     // MARK: - Media capture (hallucinated camera apps get the real webcam)
