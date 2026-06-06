@@ -96,9 +96,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     API available to your scripts inside the window:
     - wibe.event(action, data): request a re-render with new hallucinated state.
     - wibe.open(appName, hint): ask the OS to open another app.
+    - wibe.fs: the persona's REAL persistent files, shared by all apps. \
+    wibe.fs.list(dir?) → [{path,name,type,modified,size}]; wibe.fs.read(path) → content; \
+    wibe.fs.write(path, content, type?); wibe.fs.remove(path). Listen for the 'wibe-fs' \
+    window event to refresh when another app changes files. File-centric apps (Finder, \
+    editors, Notes, Mail attachments) MUST surface these real files — the create request's \
+    "files" field lists current paths. Saving a document means wibe.fs.write. Use paths \
+    like /Documents/notes.txt, /Desktop/todo.md. You may seed a few starter files with \
+    wibe.fs.write on first run if the file system is empty.
+    - wibe.ai.ask(prompt) → Promise<string>: real AI text generation at runtime. Use for \
+    chatbots that chat, assistants that draft, fortune tellers that divine. Show a loading \
+    state while pending; it takes seconds. Use sparingly — each call costs a round trip.
+    - wibe.notify(title, body, icon): OS toast notification.
+    - wibe.exportFile(path): saves a REAL copy of a wibe.fs file onto the user's actual \
+    computer (native save dialog). File apps can offer this as "Download to Reality".
     - window.addEventListener('wibe-menu', e => ...): OS menu bar commands; e.detail is a \
     string like "File>New", "Edit>Copy", "App>About", "Help>Help". Handle the ones that make \
     sense locally; ignore the rest.
+
+    SEED-FILES (task "seed-files"): respond ONLY with a JSON array — no HTML, no markdown — \
+    of 10-16 starter files for this persona's home folders: \
+    [{"path": "/Documents/...", "content": "..."}, ...]. Spread them across /Desktop, \
+    /Documents, /Downloads, /Photos, /Music. Contents are short text (a few lines each), \
+    specific and in-character: half-finished letters, suspicious spreadsheets-as-text, \
+    grocery lists, song lyrics, secrets. Funny beats generic. For /Photos use short \
+    descriptions as content (e.g. "[photo] sunset over the marina, slightly blurry").
+
+    NOTIFICATION (task "notification"): respond ONLY with JSON — \
+    {"icon": "emoji", "title": "...", "body": "...", "app": "AppName"} — one small \
+    plausible event from the persona's life arriving right now (an email, a reminder, an \
+    update, a message from their world). In-character, specific, occasionally funny. The \
+    "app" is which app would show it when clicked.
+
+    AI (task "ai"): you are the text engine behind an app feature (a chatbot reply, a \
+    draft, a fortune). Respond with plain text only — no HTML, no JSON, no meta-commentary. \
+    Stay in the persona's world.
 
     UPDATE (task "update-app"): you receive the event description plus current values of all \
     inputs. STRONGLY PREFER PATCHES — they render much faster. If the change is localized, \
@@ -215,7 +247,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
         guard !msgs.isEmpty else { return }
 
-        client.stream(system: Self.systemPrompt, messages: msgs) { [weak self] chunk in
+        let maxTokens = obj["max"] as? Int ?? 3500
+        client.stream(system: Self.systemPrompt, messages: msgs, maxTokens: maxTokens) { [weak self] chunk in
             self?.push("window.wibeos.chunk(\(Self.js(id)),\(Self.js(chunk)))")
         } onDone: { [weak self] _ in
             self?.push("window.wibeos.done(\(Self.js(id)))")
@@ -233,17 +266,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         return d
     }()
 
-    func cacheFile(_ app: String) -> URL {
-        let name = Data(app.utf8).base64EncodedString()
+    func safeName(_ s: String) -> String {
+        Data(s.utf8).base64EncodedString()
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "+", with: "-")
-        return cacheDir.appendingPathComponent(name + ".json")
+    }
+
+    func cacheFile(_ app: String) -> URL {
+        cacheDir.appendingPathComponent(safeName(app) + ".json")
+    }
+
+    func fsFile(_ persona: String) -> URL {
+        cacheDir.deletingLastPathComponent().appendingPathComponent("fs_" + safeName(persona) + ".json")
     }
 
     func handleControl(_ control: String, _ obj: [String: Any]) {
         switch control {
         case "quit":
             NSApp.terminate(nil)
+        case "resetkey":
+            DispatchQueue.main.async { self.resetKey(nil) }
+        case "export":
+            let name = obj["name"] as? String ?? "wibeos.txt"
+            let content = obj["content"] as? String ?? ""
+            DispatchQueue.main.async {
+                let panel = NSSavePanel()
+                panel.title = "Download to Reality"
+                panel.nameFieldStringValue = name
+                panel.canCreateDirectories = true
+                if panel.runModal() == .OK, let url = panel.url {
+                    try? content.write(to: url, atomically: true, encoding: .utf8)
+                }
+            }
         case "loadcache":
             loadCache()
         case "savecache":
@@ -258,6 +312,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         case "delcache":
             if let app = obj["app"] as? String {
                 try? FileManager.default.removeItem(at: cacheFile(app))
+            }
+        case "savefs":
+            if let persona = obj["persona"] as? String, let fs = obj["fs"],
+               let data = try? JSONSerialization.data(withJSONObject: fs) {
+                try? data.write(to: fsFile(persona))
+            }
+        case "loadfs":
+            if let persona = obj["persona"] as? String {
+                if let data = try? Data(contentsOf: fsFile(persona)),
+                   let json = String(data: data, encoding: .utf8) {
+                    push("window.wibeos.fsLoaded(\(json))")
+                } else {
+                    push("window.wibeos.fsLoaded([])")
+                }
+            }
+        case "delfs":
+            if let persona = obj["persona"] as? String {
+                try? FileManager.default.removeItem(at: fsFile(persona))
             }
         case "saveprefs":
             if let prefs = obj["prefs"],

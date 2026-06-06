@@ -27,6 +27,18 @@ make app          # build WibeOS.app, then: open WibeOS.app
 On first launch it asks for your API key (stored in the app's preferences;
 or set `ANTHROPIC_API_KEY` in the environment instead).
 
+## OS services
+
+- **wibe.fs** — a real persistent file system, per persona: save a note in
+  Notes, find it in Finder, open it in TextEdit. Survives reboots.
+- **Spotlight** — Cmd+K (or 🔍 in the menu bar): launch any app, open any
+  file, or imagine anything on the spot.
+- **Notifications** — apps call wibe.notify(), and every few minutes the
+  persona's world pings them on its own (emails, reminders, in-character
+  events). Click a toast to open the relevant app.
+- **wibe.ai** — apps can call Claude at runtime, so chatbots actually chat
+  and fortune tellers actually divine.
+
 ## App Store & themes
 
 The dock has an App Store stocked entirely with apps invented for whoever is

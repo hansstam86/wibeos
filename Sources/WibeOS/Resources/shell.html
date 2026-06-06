@@ -23,12 +23,24 @@
   /* ---------- Desktop ---------- */
   #desktop { position: fixed; inset: 0; background: var(--wp); transition: background .6s; }
 
+  /* ---------- Desktop icons (real /Desktop files) ---------- */
+  #dicons { position: fixed; inset: 0; z-index: 400; pointer-events: none; } /* under windows (500) */
+  .dskicon { position: absolute; width: 86px; text-align: center; pointer-events: auto; cursor: default; }
+  .dskicon .em { font-size: 40px; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  .dskicon .nm { font-size: 11px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8);
+    word-break: break-word; background: rgba(0,0,0,.18); border-radius: 4px;
+    padding: 1px 5px; display: inline-block; max-width: 82px; }
+  .dskicon:active .em { filter: brightness(.8); }
+
   /* ---------- Menu bar ---------- */
   #menubar { position: fixed; top: 0; left: 0; right: 0; height: 26px; z-index: 1000;
     display: flex; align-items: center; padding: 0 12px; gap: 2px;
     background: var(--mb-bg); backdrop-filter: blur(22px);
     color: var(--mb-fg); font-size: 13px; }
   .mitem { padding: 2px 10px; border-radius: 5px; cursor: default; white-space: nowrap; }
+  #appleBtn { font-family: -apple-system, "Apple Color Emoji", system-ui; font-size: 14px;
+    padding: 2px 12px; } /* emoji renders in ANY themed font; generous hit area */
+  .applemark { font-family: -apple-system, "Apple Color Emoji", system-ui; }
   .mitem.bold { font-weight: 700; }
   .mitem.open, .mitem:active { background: rgba(255,255,255,.22); }
   #mright { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 12.5px; }
@@ -43,6 +55,9 @@
   .dsep { height: 1px; background: rgba(255,255,255,.15); margin: 5px 8px; }
 
   /* ---------- Windows ---------- */
+  /* own stacking context BELOW the menubar/dock (z 1000): windows can never cover the OS chrome */
+  #windows { position: fixed; inset: 0; z-index: 500; pointer-events: none; }
+  .win { pointer-events: auto; }
   .win { position: absolute; min-width: 260px; min-height: 160px;
     background: var(--win-bg); border-radius: 11px; overflow: hidden;
     box-shadow: 0 22px 70px rgba(0,0,0,.5), 0 0 0 .5px rgba(255,255,255,.25);
@@ -134,6 +149,46 @@
   #sleepveil { position: fixed; inset: 0; background: #000; z-index: 3000; }
   #sleepveil[hidden] { display: none; }
 
+  /* ---------- System Settings (real, never hallucinated) ---------- */
+  #settingsDlg .dlgbox { width: 440px; text-align: left; }
+  .srow { display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 2px; border-bottom: 1px solid #e5e5e8; font-size: 13px; gap: 12px; }
+  .srow:last-of-type { border-bottom: 0; }
+  .srow .slab b { display: block; }
+  .srow .slab span { color: #888; font-size: 11.5px; }
+  .srow button { margin: 0; white-space: nowrap; }
+  .srow button.danger { background: #c0392b; }
+  .srow input[type="checkbox"] { width: 18px; height: 18px; }
+
+  /* ---------- Notifications ---------- */
+  #toasts { position: fixed; top: 34px; right: 10px; z-index: 2500;
+    display: flex; flex-direction: column; gap: 8px; width: 320px; pointer-events: none; }
+  .toast { background: rgba(40,40,46,.92); backdrop-filter: blur(18px); color: #fff;
+    border-radius: 12px; padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4); cursor: pointer; pointer-events: auto;
+    border: 1px solid rgba(255,255,255,.15); animation: tin .25s ease; }
+  @keyframes tin { from { transform: translateX(40px); opacity: 0; } }
+  .toast .ti { font-size: 22px; }
+  .toast b { font-size: 13px; display: block; }
+  .toast p { font-size: 12px; color: #bbb; margin: 2px 0 0; }
+
+  /* ---------- Spotlight ---------- */
+  #spot { position: fixed; inset: 0; z-index: 2600; background: rgba(0,0,0,.25);
+    display: flex; justify-content: center; align-items: flex-start; padding-top: 18vh; }
+  #spot[hidden] { display: none; }
+  #spotbox { width: 560px; background: rgba(46,46,52,.92); backdrop-filter: blur(24px);
+    border-radius: 14px; border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 30px 90px rgba(0,0,0,.5); overflow: hidden; }
+  #spotin { width: 100%; padding: 14px 18px; font-size: 22px; background: transparent;
+    border: 0; outline: 0; color: #fff; -webkit-user-select: text; user-select: text; }
+  #spotres { max-height: 330px; overflow: auto; padding-bottom: 4px; }
+  .spr { padding: 8px 16px; display: flex; gap: 12px; align-items: center;
+    color: #eee; font-size: 14px; cursor: default; }
+  .spr.sel { background: var(--accent); }
+  .spr .si { font-size: 20px; }
+  .spr .st { color: rgba(255,255,255,.5); margin-left: auto; font-size: 11px;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   /* ---------- Login ---------- */
   #login { position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 38px; transition: opacity .5s;
@@ -179,35 +234,31 @@
 </head>
 <body>
   <div id="desktop"></div>
+  <div id="dicons"></div>
 
   <div id="menubar">
-    <div class="mitem" data-menu="apple"></div>
+    <div class="mitem" data-menu="apple" id="appleBtn">🍎</div>
     <div class="mitem bold" data-menu="app" id="mAppName">Finder</div>
     <div class="mitem" data-menu="File">File</div>
     <div class="mitem" data-menu="Edit">Edit</div>
     <div class="mitem" data-menu="View">View</div>
     <div class="mitem" data-menu="Window">Window</div>
     <div class="mitem" data-menu="Help">Help</div>
-    <div id="mright"><span>📶</span><span>🔋</span><span id="clock"></span></div>
+    <div id="mright"><span id="spotbtn" style="cursor:pointer">🔍</span><span>📶</span><span>🔋</span><span id="clock"></span></div>
   </div>
   <div id="dropdown" hidden></div>
+
+  <div id="toasts"></div>
+  <div id="spot" hidden>
+    <div id="spotbox">
+      <input id="spotin" placeholder="wibeOS Search — apps, files, or anything you can imagine">
+      <div id="spotres"></div>
+    </div>
+  </div>
 
   <div id="windows"></div>
 
   <div id="dockwrap"><div id="dock"></div></div>
-
-  <div class="sysdlg" id="imagineDlg" hidden>
-    <div class="dlgbox">
-      <div style="font-size:40px">✨</div>
-      <h2>Imagine an App</h2>
-      <p>Name any app — real or completely made up — and wibeOS will conjure it.</p>
-      <input id="imagineInput" placeholder="e.g. Excel, DreamJournal, GoatSimulator Pro…">
-      <div>
-        <button class="alt" id="imagineCancel">Cancel</button>
-        <button id="imagineGo">Conjure</button>
-      </div>
-    </div>
-  </div>
 
   <div class="sysdlg" id="introDlg" hidden>
     <div class="dlgbox">
@@ -222,7 +273,7 @@
 
   <div class="sysdlg" id="aboutDlg" hidden>
     <div class="dlgbox">
-      <div style="font-size:48px"></div>
+      <div style="font-size:48px">🍎</div>
       <h2>About This wibe</h2>
       <p><b>wibeOS 1.0</b> (Hallucinatara)<br>
          Chip&nbsp;&nbsp;Imagination M∞<br>
@@ -230,6 +281,38 @@
          Apps&nbsp;&nbsp;0 real, ∞ possible</p>
       <p id="aboutPersona" style="border-top:1px solid #ddd;padding-top:10px"></p>
       <button id="aboutOk">OK</button>
+    </div>
+  </div>
+
+  <div class="sysdlg" id="settingsDlg" hidden>
+    <div class="dlgbox">
+      <h2 style="text-align:center">⚙️ System Settings</h2>
+      <div class="srow">
+        <div class="slab"><b id="setWho"></b><span>Currently logged in</span></div>
+        <button id="setLogout">Log Out</button>
+      </div>
+      <div class="srow">
+        <div class="slab"><b>Theme</b><span>How this persona's wibeOS looks</span></div>
+        <div>
+          <button class="alt" id="setThemeDefault">Default</button>
+          <button id="setThemeRoll">Re-imagine</button>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="slab"><b>Ambient notifications</b><span>Life events arrive on their own</span></div>
+        <input type="checkbox" id="setAmbient">
+      </div>
+      <div class="srow">
+        <div class="slab"><b>Apps</b><span>Forget this persona's hallucinated apps</span></div>
+        <button class="danger" id="setClearApps">Re-imagine All</button>
+      </div>
+      <div class="srow">
+        <div class="slab"><b>API key</b><span>Change the Anthropic key powering it all</span></div>
+        <button class="alt" id="setApiKey">Reset…</button>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="alt" id="setClose">Done</button>
+      </div>
     </div>
   </div>
 
@@ -257,7 +340,7 @@
   </div>
 
   <div id="boot">
-    <div id="blogo"></div>
+    <div id="blogo">🍎</div>
     <div id="bbar"><div id="bfill"></div></div>
     <div id="btag">wibeOS &mdash; the shell is real, the apps are not</div>
   </div>
@@ -267,8 +350,117 @@
   "use strict";
 
   /* ============ state ============ */
-  var CACHE_V = 5; // bump to invalidate cached apps when the bridge/prompt changes
-  var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {}, persona: null };
+  var CACHE_V = 7; // bump to invalidate cached apps when the bridge/prompt changes
+  var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {}, persona: null, fs: [] };
+
+  /* ============ wibe.fs: per-persona shared files ============ */
+  function fsPersist() {
+    if (state.persona) post({ control: "savefs", persona: state.persona.name, fs: state.fs });
+  }
+  function fsBroadcast(except) {
+    Object.values(state.wins).forEach(function (w) {
+      if (w !== except && w.iframe.contentWindow) {
+        w.iframe.contentWindow.postMessage({ wibe: "fs-sync", files: state.fs }, "*");
+      }
+    });
+    renderDesktopIcons();
+  }
+
+  /* ============ desktop icons ============ */
+  function fileEmoji(f) {
+    var p = f.path.toLowerCase();
+    if ((f.content || "").indexOf("[photo]") === 0 || /\.(png|jpe?g|gif|heic)$/.test(p)) return "🖼";
+    if (/\.(mp3|m4a|wav|aiff)$/.test(p)) return "🎵";
+    if (/\.(csv|xlsx?|numbers)$/.test(p)) return "📊";
+    if (/\.(json|js|py|sh)$/.test(p)) return "⚙️";
+    return "📄";
+  }
+  function openFile(f) {
+    if (fileEmoji(f) === "🖼") {
+      openApp("Preview", "🖼", "Image viewer showing the photo file " + f.path +
+        " — render the photo itself as a large beautiful CSS-gradient + emoji art composition based on this description: " +
+        (f.content || "").slice(0, 200) + ". Local zoom buttons.");
+    } else {
+      openApp("TextEdit", "📄", "Plain text editor. On open, load and display " + f.path +
+        " with wibe.fs.read; editing auto-saves back with wibe.fs.write.");
+    }
+  }
+  function renderDesktopIcons() {
+    var c = $("dicons");
+    c.innerHTML = "";
+    if (!state.persona) return;
+    settings.iconPos = settings.iconPos || {};
+    var pos = settings.iconPos[state.persona.name] || {};
+    var files = state.fs.filter(function (f) { return f.path.indexOf("/Desktop/") === 0; });
+    files.forEach(function (f, i) {
+      var d = document.createElement("div");
+      d.className = "dskicon";
+      var p = pos[f.path] ||
+        { x: window.innerWidth - 110 - 100 * Math.floor(i / 7), y: 40 + (i % 7) * 96 };
+      d.style.left = Math.max(4, Math.min(window.innerWidth - 92, p.x)) + "px";
+      d.style.top = Math.max(30, Math.min(window.innerHeight - 150, p.y)) + "px";
+      d.innerHTML = '<div class="em">' + fileEmoji(f) + '</div><div class="nm">' +
+        esc(f.path.split("/").pop()) + "</div>";
+      d.addEventListener("dblclick", function () { openFile(f); });
+      d.addEventListener("contextmenu", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        iconMenu(e, f);
+      });
+      d.addEventListener("mousedown", function (e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        var sx = e.clientX, sy = e.clientY;
+        var ox = parseInt(d.style.left, 10), oy = parseInt(d.style.top, 10);
+        function mm(ev) {
+          d.style.left = (ox + ev.clientX - sx) + "px";
+          d.style.top = Math.max(28, oy + ev.clientY - sy) + "px";
+        }
+        function mu(ev) {
+          document.removeEventListener("mousemove", mm);
+          document.removeEventListener("mouseup", mu);
+          if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 4) {
+            settings.iconPos[state.persona.name] = settings.iconPos[state.persona.name] || {};
+            settings.iconPos[state.persona.name][f.path] =
+              { x: parseInt(d.style.left, 10), y: parseInt(d.style.top, 10) };
+            savePrefs();
+          }
+        }
+        document.addEventListener("mousemove", mm);
+        document.addEventListener("mouseup", mu);
+      });
+      c.appendChild(d);
+    });
+  }
+  function iconMenu(e, f) {
+    var dd = $("dropdown");
+    dd.innerHTML = "";
+    [
+      { l: "Open", f: function () { openFile(f); } },
+      { l: "Download to Reality…", f: function () {
+          post({ control: "export", name: f.path.split("/").pop(), content: f.content || "" });
+        } },
+      { sep: 1 },
+      { l: "Delete", f: function () {
+          state.fs = state.fs.filter(function (x) { return x.path !== f.path; });
+          fsPersist();
+          fsBroadcast();
+        } }
+    ].forEach(function (it) {
+      if (it.sep) {
+        var s = document.createElement("div"); s.className = "dsep"; dd.appendChild(s);
+        return;
+      }
+      var d = document.createElement("div");
+      d.className = "ditem";
+      d.innerHTML = "<span>" + esc(it.l) + "</span>";
+      d.addEventListener("click", function (ev) { ev.stopPropagation(); dd.hidden = true; it.f(); });
+      dd.appendChild(d);
+    });
+    dd.style.left = Math.min(window.innerWidth - 210, e.clientX) + "px";
+    dd.style.top = e.clientY + "px";
+    dd.hidden = false;
+  }
 
   /* ============ personas ============ */
   var DEFAULT_PERSONAS = [
@@ -331,7 +523,8 @@
     return (state.persona ? state.persona.name : "_") + "::" + app;
   }
   function savePrefs() {
-    post({ control: "saveprefs", prefs: { personas: personas, themes: themes, installed: installed } });
+    post({ control: "saveprefs", prefs: { personas: personas, themes: themes,
+                                          installed: installed, settings: settings } });
   }
 
   /* ============ themes ============ */
@@ -370,9 +563,29 @@
            "radial-gradient(900px 700px at 18% 82%, color-mix(in srgb, " + accent + " 50%, #ff5fa2) 0%, transparent 55%)," +
            "linear-gradient(160deg, color-mix(in srgb, " + accent + " 40%, #15182f) 0%, color-mix(in srgb, " + accent + " 20%, #241636) 50%, #11142a 100%)";
   }
+  function colorLum(c) {
+    var r = 0, g = 0, b = 0, m;
+    if (!c) return null;
+    if (c[0] === "#") {
+      var h = c.slice(1);
+      if (h.length === 3 || h.length === 4) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+    } else if ((m = String(c).match(/rgba?\(([^)]*)\)/))) {
+      var p = m[1].split(",");
+      r = +p[0]; g = +p[1]; b = +p[2];
+    } else return null;
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  }
   function applyTheme(t) {
     if (t && (!t.wallpaper || !validBg(t.wallpaper) || wallpaperLooksBlack(t.wallpaper))) {
       t.wallpaper = fallbackWallpaper(t.accent); // rescue black/broken wallpapers
+    }
+    if (t) { // menu bar must stay readable: reject low-contrast combos
+      var lb = colorLum(t.menubarBg), lf = colorLum(t.menubarFg);
+      if (lb !== null && lf !== null && Math.abs(lb - lf) < 0.3) {
+        delete t.menubarBg;
+        delete t.menubarFg;
+      }
     }
     var r = document.documentElement.style;
     Object.keys(THEME_VARS).forEach(function (k) {
@@ -387,7 +600,7 @@
               history: [{ role: "user", content: JSON.stringify(
                 { task: "create-theme", name: p.name, persona: p.desc }) }] };
     state.gen[g.id] = g;
-    post({ id: g.id, messages: g.history });
+    post({ id: g.id, messages: g.history, max: 900 });
   }
   var winsEl = document.getElementById("windows");
 
@@ -401,21 +614,23 @@
   /* ============ default apps ============ */
   var APPS = [
     { name: "Finder", icon: "📁", w: 860, h: 540,
-      hint: "macOS Finder: translucent sidebar (Favorites: Desktop, Documents, Downloads, Applications; iCloud; Tags), toolbar with back/forward and view buttons, icon grid of plausible files and folders belonging to the user. Selecting shows highlight; double-clicking a text file can preview it locally in a panel. Opening folders swaps content locally." },
+      hint: "macOS Finder built ENTIRELY on the real file system (wibe.fs): sidebar folders (Desktop, Documents, Downloads, Photos, Music) derived from wibe.fs.list() paths, toolbar with back/forward, icon grid of the actual files. Double-click a file → preview panel showing wibe.fs.read(path), editable + savable with wibe.fs.write. Delete key or context button → wibe.fs.remove. New Folder/New File buttons create via wibe.fs.write. Listen to the 'wibe-fs' window event and re-render the grid so changes from other apps appear live. Do NOT invent fake files — show only what wibe.fs returns." },
     { name: "Safari", icon: "🧭", w: 980, h: 640,
       hint: "Web browser. Toolbar with back/forward, address bar with data-wibe-enter=\"navigate: hallucinate the full web page for this URL or search query, keeping the browser chrome\". Start page with a favorites grid of fake sites, each tile data-wibe to visit it. Pages must be rich and plausible with real-looking copy, nav, images-as-CSS." },
     { name: "Calculator", icon: "🧮", w: 270, h: 420,
       hint: "Fully working macOS-style calculator (dark style, orange operator buttons), computed entirely locally in JavaScript including chained operations, %, +/-, decimals. No data-wibe anywhere." },
     { name: "Notes", icon: "📝", w: 820, h: 520,
-      hint: "Apple Notes look: yellow accents, sidebar list of 4-5 pre-written entertaining notes (groceries, ideas, a half-finished poem), editable note body (contenteditable) working locally. New note button works locally." },
+      hint: "Apple Notes look: yellow accents, sidebar listing notes stored in the REAL file system under /Documents/Notes/ (wibe.fs.list), note body editable (contenteditable) and auto-saved with wibe.fs.write on input (debounced). New note creates a file; delete removes it. If /Documents/Notes/ is empty, seed 3 entertaining in-character notes via wibe.fs.write on first run. Listen to 'wibe-fs' to refresh the sidebar." },
     { name: "Mail", icon: "✉️", w: 940, h: 600,
       hint: "Mail client: three-pane (mailboxes, message list, reading pane) with ~8 hallucinated entertaining-but-plausible emails (newsletters, a boss, a confused relative). Reading and composing work locally; Send shows a whoosh confirmation locally." },
+    { name: "Messages", icon: "💬", w: 900, h: 580,
+      hint: "iMessage-style Messages app. Each contact is a file /Messages/<Name>.json holding {\"meta\":{\"name\",\"emoji\",\"personality\"},\"messages\":[{from,text,time}]} (when parsing, tolerate older plain-array files via try/catch). STARTUP ORDER MATTERS: (1) read wibe.fs.list('/Messages/'); (2) if empty, FIRST seed 4 contacts — invented people from the persona's world (a friend, a relative, a nemesis, one weird acquaintance) with distinct personalities and 2-3 starter messages each, via wibe.fs.write; (3) THEN render the sidebar (avatar, name, last-message preview). The sidebar must NEVER be empty. A '+' NEW CONTACT button at the top of the sidebar opens a small form: name + optional 'who are they?' field; on create, invent an emoji avatar and a vivid personality (from the description, or made up to fit the persona's world if blank), write the new /Messages/<Name>.json with meta and an opening message FROM the new contact, select them, and wibe.notify. Clicking a contact shows the conversation. Sending: append the user's blue bubble, save, show a typing indicator, then wibe.ai.ask with the contact's personality, the last ~10 messages and the new message, requesting ONLY the contact's reply text; append the gray reply, save, and wibe.notify(contactName, reply, '💬'). Timestamps, Enter to send." },
     { name: "Photos", icon: "🌸", w: 900, h: 580,
       hint: "Photos app: grid of 12+ 'photos' built from CSS gradients + emoji compositions (sunsets, cats, vacations) with dates, written as STATIC HTML markup (no JS-generated grid). Clicking opens a large lightbox view locally. Memories row on top." },
     { name: "Music", icon: "🎵", w: 880, h: 560,
       hint: "Music player: sidebar, album grid of invented artists/albums with CSS-art covers (static HTML), now-playing bar. Playback uses the OS music engine: wibe.music.play({title, artist, genre}) on track click, pause/resume/setVolume wired to the controls, and an animated equalizer driven by wibe.music.getLevels() polled in requestAnimationFrame. Give each invented track a genre (pop/rock/lofi/hiphop/edm/ambient) so songs sound distinct. All local." },
     { name: "Terminal", icon: "⬛", w: 700, h: 450,
-      hint: "Terminal (dark, green-on-black, blocky cursor). Implement ls, cd, cat, pwd, echo, whoami, date, clear, uname, neofetch (with wibeOS ASCII art) locally in JS against a small fake filesystem. Unknown commands print witty plausible output locally. Prompt: <persona's lowercase first name>@wibeos ~ %" },
+      hint: "A REAL working terminal. Layout: scrollback div + one visible <input> on the prompt line (autofocus on load AND refocus whenever the window body is clicked; Enter runs the command, up/down arrows walk history). Commands operate on the REAL file system via wibe.fs: ls / ls <dir> (list wibe.fs paths), cat <file> (wibe.fs.read), rm <file> (wibe.fs.remove), touch <file> and echo text > file (wibe.fs.write), cd/pwd (track a cwd string), plus clear, whoami, date, uname, neofetch (wibeOS ASCII art). For any UNKNOWN command, print a dim 'running…' line and call wibe.ai.ask('You are the wibeOS terminal. Output for command: <cmd>') then print the result. Dark theme, monospace, blocky cursor. Test the input wiring mentally — typing MUST work." },
     { name: "App Store", icon: "🛍️", w: 980, h: 640,
       hint: "The wibeOS App Store, tailored entirely to the logged-in persona: featured banner, category chips, grid of 9-12 invented apps THIS persona would crave — emoji icon, name, tagline, star rating, price (Free/$4.99), one funny review quote each. Every card has a Get button: on click call wibe.install(appName, emoji, oneLineAppDescription), then turn the button into Open which calls wibe.open(appName, sameDescription). Static HTML + local JS only." },
     { name: "Trash", icon: "🗑", w: 540, h: 380,
@@ -452,10 +667,35 @@
     "window.addEventListener('message',function(e){var d=e.data||{};" +
     "if(d.wibe==='menu'){window.dispatchEvent(new CustomEvent('wibe-menu',{detail:d.item}));}" +
     "if(d.wibe==='patch'){(d.patches||[]).forEach(function(p){" +
-    "var el=document.querySelector(p.select);if(el)el.innerHTML=p.html;});}});" +
+    "var el=document.querySelector(p.select);if(el)el.innerHTML=p.html;});}" +
+    "if(d.wibe==='fs-sync'){window.__wibeFS=d.files||[];" +
+    "window.dispatchEvent(new CustomEvent('wibe-fs',{detail:window.__wibeFS}));}" +
+    "if(d.wibe==='ai-result'){var q=_aiq[d.reqId];if(q){delete _aiq[d.reqId];" +
+    "d.error?q.rej(new Error(d.error)):q.res(d.text);}}});" +
     "window.wibe={event:function(a,data){parent.postMessage({wibe:'event',detail:{action:a,data:data===undefined?null:data,inputs:inputs()}},'*');}," +
     "open:function(app,hint){parent.postMessage({wibe:'open',app:app,hint:hint||''},'*');}," +
     "install:function(app,icon,hint){parent.postMessage({wibe:'install',app:app,icon:icon||'✨',hint:hint||''},'*');}};" +
+    /* wibe.fs: per-persona files shared across apps (snapshot injected at mount, synced after) */
+    "window.__wibeFS=window.__wibeFS||[];" +
+    "window.wibe.fs={" +
+    "list:function(dir){return window.__wibeFS.filter(function(f){return !dir||f.path.indexOf(dir)===0;})" +
+    ".map(function(f){return{path:f.path,name:f.path.split('/').pop(),type:f.type||'text',modified:f.modified,size:(f.content||'').length};});}," +
+    "read:function(path){var f=window.__wibeFS.find(function(x){return x.path===path;});return f?f.content:null;}," +
+    "write:function(path,content,type){bump();var f=window.__wibeFS.find(function(x){return x.path===path;});" +
+    "if(f){f.content=String(content);f.modified=Date.now();if(type)f.type=type;}" +
+    "else{window.__wibeFS.push({path:String(path),content:String(content),type:type||'text',modified:Date.now()});}" +
+    "parent.postMessage({wibe:'fs-write',path:String(path),content:String(content).slice(0,200000),type:type||'text'},'*');}," +
+    "remove:function(path){bump();window.__wibeFS=window.__wibeFS.filter(function(x){return x.path!==path;});" +
+    "parent.postMessage({wibe:'fs-delete',path:String(path)},'*');}};" +
+    /* wibe.ai: runtime text generation for chatbots, assistants, content */
+    "var _aiq={},_ain=0;" +
+    "window.wibe.ai={ask:function(prompt){bump();return new Promise(function(res,rej){" +
+    "var id='ai'+(_ain++);_aiq[id]={res:res,rej:rej};" +
+    "parent.postMessage({wibe:'ai',prompt:String(prompt).slice(0,4000),reqId:id},'*');});}};" +
+    /* wibe.notify: OS toast notifications */
+    "window.wibe.notify=function(title,body,icon){parent.postMessage({wibe:'notify'," +
+    "title:String(title||'').slice(0,80),body:String(body||'').slice(0,200),icon:String(icon||'🔔').slice(0,8)},'*');};" +
+    "window.wibe.exportFile=function(path){bump();parent.postMessage({wibe:'export',path:String(path)},'*');};" +
     /* built-in, tested camera API so hallucinated apps can't get it wrong */
     "window.wibe.camera={_s:null," +
     "start:function(video){bump();return navigator.mediaDevices.getUserMedia({video:true}).then(function(s){" +
@@ -912,7 +1152,22 @@
       if (p && p.personas && p.personas.length) personas = p.personas;
       if (p && p.themes) themes = p.themes;
       if (p && p.installed) installed = p.installed;
+      if (p && p.settings) settings = p.settings;
       renderLogin();
+    },
+    fsLoaded: function (files) {
+      state.fs = Array.isArray(files) ? files : [];
+      fsBroadcast();
+      // first login as this persona: hallucinate their home folder
+      if (state.persona && state.fs.length === 0) {
+        var g = { id: "g" + (state.nextId++), kind: "fsseed", pname: state.persona.name,
+                  buf: "", win: null, raf: null,
+                  history: [{ role: "user", content: JSON.stringify({
+                    task: "seed-files", name: state.persona.name,
+                    persona: state.persona.desc, time: new Date().toString() }) }] };
+        state.gen[g.id] = g;
+        post({ id: g.id, messages: g.history, max: 2000 });
+      }
     },
     chunk: function (id, t) {
       var p = state.gen[id];
@@ -931,6 +1186,44 @@
     },
     done: function (id) {
       var p = state.gen[id];
+      if (p && p.kind === "ai") {
+        delete state.gen[id];
+        var wv = state.wins[p.winId];
+        if (wv && wv.iframe.contentWindow) {
+          wv.iframe.contentWindow.postMessage({ wibe: "ai-result", reqId: p.reqId, text: strip(p.buf).trim() }, "*");
+        }
+        pump();
+        return;
+      }
+      if (p && p.kind === "fsseed") {
+        delete state.gen[id];
+        if (state.persona && state.persona.name === p.pname && state.fs.length === 0) {
+          var seeded = null;
+          try { seeded = JSON.parse(strip(p.buf).replace(/^[^\[]*/, "").replace(/[^\]]*$/, "")); } catch (e) {}
+          if (Array.isArray(seeded)) {
+            state.fs = seeded.slice(0, 30)
+              .filter(function (f) { return f && typeof f.path === "string"; })
+              .map(function (f) {
+                return { path: f.path.slice(0, 120), content: String(f.content || "").slice(0, 4000),
+                         type: f.type || "text", modified: Date.now() };
+              });
+            fsPersist();
+            fsBroadcast();
+          }
+        }
+        pump();
+        return;
+      }
+      if (p && p.kind === "notif") {
+        delete state.gen[id];
+        if (state.persona && state.persona.name === p.pname) {
+          var n = null;
+          try { n = JSON.parse(strip(p.buf).replace(/^[^{]*/, "").replace(/[^}]*$/, "")); } catch (e) {}
+          if (n && n.title) toast(n.icon, n.title, n.body, n.app);
+        }
+        pump();
+        return;
+      }
       if (p && p.kind === "theme") {
         delete state.gen[id];
         var th = null;
@@ -976,6 +1269,17 @@
     },
     fail: function (id, msg) {
       var p = state.gen[id];
+      if (p && (p.kind === "ai" || p.kind === "notif")) {
+        delete state.gen[id];
+        if (p.kind === "ai") {
+          var wv = state.wins[p.winId];
+          if (wv && wv.iframe.contentWindow) {
+            wv.iframe.contentWindow.postMessage({ wibe: "ai-result", reqId: p.reqId, error: String(msg).slice(0, 200) }, "*");
+          }
+        }
+        pump();
+        return;
+      }
       if (p && p.kind === "theme") {
         delete state.gen[id];
         if (p.cb) p.cb();   // default theme stays; carry on
@@ -1004,7 +1308,7 @@
 
   function sendGen(w) {
     w.buf = "";
-    post({ id: w.id, messages: w.history });
+    post({ id: w.id, messages: w.history, max: 2500 }); // updates are smallish (often patches)
   }
 
   function trimHistory(w) {
@@ -1025,11 +1329,15 @@
 
   function withBridge(html) {
     // inject at the TOP of body so the bridge (AudioContext wrapper, error
-    // reporting) is installed before any app code runs
+    // reporting) is installed before any app code runs. The file-system
+    // snapshot goes first so apps see their files from the very first line.
     var doc = strip(html);
+    var snap = "<script>window.__wibeFS=" +
+      JSON.stringify(state.fs).replace(/<\//g, "<\\/") +
+      ";<\/script>";
     var m = doc.match(/<body[^>]*>/i);
-    if (m) doc = doc.replace(m[0], m[0] + BRIDGE + ENGINE);
-    else doc = BRIDGE + ENGINE + doc;
+    if (m) doc = doc.replace(m[0], m[0] + snap + BRIDGE + ENGINE);
+    else doc = snap + BRIDGE + ENGINE + doc;
     return doc;
   }
 
@@ -1083,6 +1391,11 @@
     };
     state.wins[id] = w;
 
+    w.iframe.addEventListener("load", function () { // seed the app with the shared files
+      if (w.iframe.contentWindow) {
+        w.iframe.contentWindow.postMessage({ wibe: "fs-sync", files: state.fs }, "*");
+      }
+    });
     el.addEventListener("mousedown", function () { bringFront(w); }, true);
     el.querySelector(".tbar").addEventListener("mousedown", function (e) {
       if (e.target.classList.contains("lt")) return;
@@ -1199,6 +1512,7 @@
         user: state.persona ? state.persona.name : (window.WIBE_USER || "user"),
         persona: state.persona ? state.persona.desc : "",
         theme: state.theme ? { accent: state.theme.accent, dark: !!state.theme.dark } : null,
+        files: state.fs.slice(0, 40).map(function (f) { return f.path; }),
         time: new Date().toString()
       })
     };
@@ -1218,7 +1532,7 @@
       p = { id: "g" + (state.nextId++), app: w.app, ck: cacheKey(w.app), buf: "", win: null, raf: null,
             history: [createMsg(w.app, w.hint)] };
       state.gen[p.id] = p;
-      post({ id: p.id, messages: p.history });
+      post({ id: p.id, messages: p.history, max: 3500 });
     }
     p.win = w;
     w.el.classList.add("generating");
@@ -1235,17 +1549,16 @@
     });
     pump();
     pump();
-    pump();
   }
   function pump() {
-    if (Object.keys(state.gen).length >= 3) return;
+    if (Object.keys(state.gen).length >= 2) return; // stay under org rate limits
     var a = pfQueue.shift();
     if (!a) return;
     if (state.cache[cacheKey(a.name)] || findGen(a.name)) { pump(); return; }
     var p = { id: "g" + (state.nextId++), app: a.name, ck: cacheKey(a.name), buf: "", win: null, raf: null,
               history: [createMsg(a.name, a.hint)] };
     state.gen[p.id] = p;
-    post({ id: p.id, messages: p.history });
+    post({ id: p.id, messages: p.history, max: 3500 });
   }
 
   function openApp(app, icon, hint, force) {
@@ -1306,6 +1619,33 @@
     else if (d.wibe === "open") openApp(String(d.app).slice(0, 60), "✨",
       "An app requested by another app: " + String(d.app) + ". " + String(d.hint || ""));
     else if (d.wibe === "focus" && w) bringFront(w);
+    else if (d.wibe === "fs-write" && w) {
+      var f = state.fs.find(function (x) { return x.path === d.path; });
+      if (f) { f.content = d.content; f.modified = Date.now(); if (d.type) f.type = d.type; }
+      else state.fs.push({ path: String(d.path), content: String(d.content), type: d.type || "text", modified: Date.now() });
+      fsPersist();
+      fsBroadcast(w);
+    }
+    else if (d.wibe === "fs-delete" && w) {
+      state.fs = state.fs.filter(function (x) { return x.path !== d.path; });
+      fsPersist();
+      fsBroadcast(w);
+    }
+    else if (d.wibe === "notify") toast(d.icon, d.title, d.body, null);
+    else if (d.wibe === "export" && w) {
+      var xf = state.fs.find(function (x) { return x.path === d.path; });
+      if (xf) post({ control: "export", name: xf.path.split("/").pop(), content: xf.content || "" });
+    }
+    else if (d.wibe === "ai" && w) {
+      var ag = { id: "g" + (state.nextId++), kind: "ai", winId: w.id, reqId: d.reqId,
+                 buf: "", win: null, raf: null,
+                 history: [{ role: "user", content: JSON.stringify({
+                   task: "ai", app: w.app,
+                   persona: state.persona ? state.persona.desc : "",
+                   prompt: String(d.prompt).slice(0, 4000) }) }] };
+      state.gen[ag.id] = ag;
+      post({ id: ag.id, messages: ag.history, max: 1000 });
+    }
     else if (d.wibe === "install" && state.persona) {
       var nm = String(d.app).slice(0, 40), ic = String(d.icon || "✨").slice(0, 8);
       var list = installed[state.persona.name] = installed[state.persona.name] || [];
@@ -1346,9 +1686,14 @@
     var sep2 = document.createElement("div"); sep2.className = "dsepv"; dock.appendChild(sep2);
     var im = document.createElement("div");
     im.className = "dicon";
-    im.innerHTML = "✨<span class='tip'>Imagine…</span><span class='dot'></span>";
-    im.addEventListener("click", showImagine);
+    im.innerHTML = "✨<span class='tip'>Search &amp; Imagine (⌘K)</span><span class='dot'></span>";
+    im.addEventListener("click", spotOpen);
     dock.appendChild(im);
+    var st = document.createElement("div");
+    st.className = "dicon";
+    st.innerHTML = "⚙️<span class='tip'>System Settings (⌘,)</span><span class='dot'></span>";
+    st.addEventListener("click", openSettings);
+    dock.appendChild(st);
   }
 
   function dockIcon(name, icon, hint, removable) {
@@ -1394,6 +1739,8 @@
             : "";
           $("aboutDlg").hidden = false;
         } },
+      { sep: 1 },
+      { l: "System Settings…", k: "⌘,", f: openSettings },
       { sep: 1 },
       { l: "Sleep", f: function () { $("sleepveil").hidden = false; } },
       { l: "Re-imagine Theme", f: function () {
@@ -1509,24 +1856,179 @@
   /* keyboard */
   document.addEventListener("keydown", function (e) {
     if (e.metaKey && e.key === "w") { e.preventDefault(); var f = front(); if (f) closeWin(f); }
+    if (e.metaKey && (e.key === "k" || e.key === " ")) { e.preventDefault(); spotOpen(); }
+    if (e.metaKey && e.key === ",") { e.preventDefault(); openSettings(); }
+    if (e.key === "Escape") {
+      if (!$("spot").hidden) spotClose();
+      else if (!$("settingsDlg").hidden) $("settingsDlg").hidden = true;
+    }
   });
 
-  /* ============ imagine dialog ============ */
-  function showImagine() {
-    $("imagineDlg").hidden = false;
-    $("imagineInput").value = "";
-    setTimeout(function () { $("imagineInput").focus(); }, 50);
+  /* ============ System Settings ============ */
+  var settings = { ambient: true };
+  function openSettings() {
+    if (!state.persona) return;
+    $("setWho").textContent = state.persona.emoji + " " + state.persona.name;
+    $("setAmbient").checked = settings.ambient !== false;
+    $("settingsDlg").hidden = false;
   }
-  function conjure() {
-    var name = $("imagineInput").value.trim();
-    $("imagineDlg").hidden = true;
-    if (!name) return;
-    openApp(name.slice(0, 60), "✨",
-      'An app the user just imagined: "' + name + '". Interpret generously and build something delightful and convincing.');
+  $("setClose").addEventListener("click", function () { $("settingsDlg").hidden = true; });
+  $("setLogout").addEventListener("click", function () {
+    $("settingsDlg").hidden = true;
+    logout();
+  });
+  $("setThemeRoll").addEventListener("click", function () {
+    if (!state.persona) return;
+    delete themes[state.persona.name];
+    savePrefs();
+    requestTheme(state.persona, function () {});
+    $("settingsDlg").hidden = true;
+  });
+  $("setThemeDefault").addEventListener("click", function () {
+    if (!state.persona) return;
+    delete themes[state.persona.name];
+    savePrefs();
+    applyTheme(null);
+  });
+  $("setAmbient").addEventListener("change", function () {
+    settings.ambient = $("setAmbient").checked;
+    savePrefs();
+    if (settings.ambient) scheduleAmbient(); else clearTimeout(ambientTimer);
+  });
+  $("setClearApps").addEventListener("click", function () {
+    if (!state.persona) return;
+    if (!confirm("Forget every hallucinated app for " + state.persona.name + "? They will regenerate fresh.")) return;
+    Object.values(state.wins).forEach(function (w) { closeWin(w); });
+    var pre = state.persona.name + "::";
+    Object.keys(state.cache).forEach(function (k) {
+      if (k.indexOf(pre) === 0) {
+        delete state.cache[k];
+        post({ control: "delcache", app: k });
+      }
+    });
+    prefetchAll();
+    $("settingsDlg").hidden = true;
+  });
+  $("setApiKey").addEventListener("click", function () {
+    $("settingsDlg").hidden = true;
+    post({ control: "resetkey" });
+  });
+
+  /* ============ notifications ============ */
+  function toast(icon, title, body, app) {
+    var t = document.createElement("div");
+    t.className = "toast";
+    t.innerHTML = '<div class="ti">' + esc(icon || "🔔") + '</div><div><b>' + esc(title || "") +
+      "</b><p>" + esc(body || "") + "</p></div>";
+    t.addEventListener("click", function () {
+      t.remove();
+      if (app) openApp(String(app).slice(0, 40), "✨",
+        "Open showing the content behind this notification: " + title + " — " + (body || ""));
+    });
+    $("toasts").appendChild(t);
+    setTimeout(function () {
+      t.style.transition = "opacity .4s";
+      t.style.opacity = "0";
+      setTimeout(function () { t.remove(); }, 400);
+    }, 8000);
   }
-  $("imagineGo").addEventListener("click", conjure);
-  $("imagineCancel").addEventListener("click", function () { $("imagineDlg").hidden = true; });
-  $("imagineInput").addEventListener("keydown", function (e) { if (e.key === "Enter") conjure(); });
+
+  /* ambient fake life: the persona's world occasionally pings them */
+  var ambientTimer = null;
+  function scheduleAmbient() {
+    clearTimeout(ambientTimer);
+    ambientTimer = setTimeout(function () {
+      if (state.persona && settings.ambient !== false && Object.keys(state.gen).length < 2) {
+        var g = { id: "g" + (state.nextId++), kind: "notif", pname: state.persona.name,
+                  buf: "", win: null, raf: null,
+                  history: [{ role: "user", content: JSON.stringify({
+                    task: "notification", name: state.persona.name, persona: state.persona.desc,
+                    apps: APPS.map(function (a) { return a.name; }),
+                    time: new Date().toString() }) }] };
+        state.gen[g.id] = g;
+        post({ id: g.id, messages: g.history, max: 250 });
+      }
+      scheduleAmbient();
+    }, 180000 + Math.random() * 180000); // every 3-6 minutes
+  }
+
+  /* ============ Spotlight ============ */
+  var spotSel = 0, spotItems = [];
+  function spotOpen() {
+    if (!state.persona) return;
+    $("spot").hidden = false;
+    $("spotin").value = "";
+    spotUpdate();
+    setTimeout(function () { $("spotin").focus(); }, 30);
+  }
+  function spotClose() { $("spot").hidden = true; }
+  function spotUpdate() {
+    var raw = $("spotin").value.trim();
+    var q = raw.toLowerCase();
+    spotItems = [];
+    var inst = (state.persona && installed[state.persona.name]) || [];
+    var all = APPS.map(function (a) { return { icon: a.icon, name: a.name, hint: a.hint }; })
+      .concat(inst.map(function (a) { return { icon: a.icon, name: a.name, hint: a.hint }; }));
+    var pre = (state.persona ? state.persona.name : "_") + "::";
+    Object.keys(state.cache).forEach(function (k) {
+      if (k.indexOf(pre) === 0) {
+        var nm = k.slice(pre.length);
+        if (nm !== "__theme__" && !all.some(function (a) { return a.name === nm; })) {
+          all.push({ icon: "✨", name: nm });
+        }
+      }
+    });
+    all.forEach(function (a) {
+      if (!q || a.name.toLowerCase().indexOf(q) >= 0) {
+        spotItems.push({ icon: a.icon, label: a.name, tag: "App",
+          f: function () { spotClose(); openApp(a.name, a.icon, a.hint); } });
+      }
+    });
+    state.fs.forEach(function (fl) {
+      var nm = fl.path.split("/").pop();
+      if (q && (nm.toLowerCase().indexOf(q) >= 0 || fl.path.toLowerCase().indexOf(q) >= 0)) {
+        spotItems.push({ icon: "📄", label: nm, tag: fl.path, f: function () {
+          spotClose();
+          openApp("TextEdit", "📄",
+            "Plain text editor. On open, load and display the file " + fl.path +
+            " with wibe.fs.read; let the user edit and save it back with wibe.fs.write.");
+        } });
+      }
+    });
+    if (raw) {
+      spotItems.push({ icon: "✨", label: 'Imagine "' + raw + '"', tag: "conjure", f: function () {
+        spotClose();
+        openApp(raw.slice(0, 60), "✨",
+          'An app the user just imagined: "' + raw + '". Interpret generously and build something delightful.');
+      } });
+    }
+    spotSel = 0;
+    spotRender();
+  }
+  function spotRender() {
+    var r = $("spotres");
+    r.innerHTML = "";
+    spotItems.slice(0, 12).forEach(function (it, i) {
+      var d = document.createElement("div");
+      d.className = "spr" + (i === spotSel ? " sel" : "");
+      d.innerHTML = '<span class="si">' + esc(it.icon) + "</span><span>" + esc(it.label) +
+        '</span><span class="st">' + esc(it.tag || "") + "</span>";
+      d.addEventListener("click", it.f);
+      d.addEventListener("mousemove", function () {
+        if (spotSel !== i) { spotSel = i; spotRender(); }
+      });
+      r.appendChild(d);
+    });
+  }
+  $("spotin").addEventListener("input", spotUpdate);
+  $("spotin").addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown") { e.preventDefault(); spotSel = Math.min(spotSel + 1, Math.min(spotItems.length, 12) - 1); spotRender(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); spotSel = Math.max(spotSel - 1, 0); spotRender(); }
+    else if (e.key === "Enter" && spotItems[spotSel]) spotItems[spotSel].f();
+    else if (e.key === "Escape") spotClose();
+  });
+  $("spot").addEventListener("click", function (e) { if (e.target === $("spot")) spotClose(); });
+  $("spotbtn").addEventListener("click", spotOpen);
 
   /* ============ login / personas ============ */
   function renderLogin() {
@@ -1592,12 +2094,16 @@
         post({ control: "delcache", app: k });
       }
     });
+    post({ control: "delfs", persona: p.name });
     savePrefs();
     renderLogin();
   }
 
   function login(p, introduce) {
     state.persona = p;
+    state.fs = [];
+    post({ control: "loadfs", persona: p.name });
+    scheduleAmbient();
     $("login").classList.add("hidden");
     $("mAppName").textContent = "Finder";
     if (introduce) {
@@ -1621,9 +2127,13 @@
     Object.values(state.wins).forEach(function (w) { closeWin(w); });
     Object.values(state.gen).forEach(function (p) { p.win = null; }); // finish into cache silently
     state.persona = null;
+    state.fs = [];
+    clearTimeout(ambientTimer);
+    spotClose();
     pfQueue.length = 0;
     applyTheme(null);
     refreshDock();
+    renderDesktopIcons(); // clears them
     $("login").classList.remove("hidden");
   }
 
