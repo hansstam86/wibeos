@@ -8,7 +8,7 @@ all instant, zero API calls). The *apps* are not: each app window is hallucinate
 by Claude as a self-contained interactive HTML mini-app running in a sandboxed
 iframe. Claude writes working JavaScript on the fly, so a calculator actually
 computes locally; only actions that need fresh imagination (navigating the fake
-Safari, etc.) trigger a regeneration. Opened apps are cached, so reopening is
+the Jungle browser, etc.) trigger a regeneration. Opened apps are cached, so reopening is
 instant.
 
 ## Requirements

@@ -16,9 +16,11 @@ final class AnthropicClient {
     func stream(system: String,
                 messages: [ChatMessage],
                 maxTokens: Int = 3500,
+                modelOverride: String? = nil,
                 onChunk: @escaping (String) -> Void,
-                onDone: @escaping (String) -> Void,
+                onDone: @escaping (String, Bool) -> Void,   // (fullText, truncated)
                 onError: @escaping (String) -> Void) {
+        let useModel = modelOverride ?? model
         Task {
             var attempt = 0
             while true {
@@ -32,7 +34,7 @@ final class AnthropicClient {
                     req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
                     let body: [String: Any] = [
-                        "model": model,
+                        "model": useModel,
                         "max_tokens": max(200, min(8192, maxTokens)),
                         "stream": true,
                         // cache the system prompt across calls: lower latency + cost
@@ -67,21 +69,28 @@ final class AnthropicClient {
                     }
 
                     var full = ""
+                    var truncated = false
                     for try await line in bytes.lines {
                         guard line.hasPrefix("data: ") else { continue }
                         let payload = String(line.dropFirst(6))
                         guard let data = payload.data(using: .utf8),
                               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                         else { continue }
-                        if let type = obj["type"] as? String,
-                           type == "content_block_delta",
-                           let delta = obj["delta"] as? [String: Any],
-                           let text = delta["text"] as? String {
-                            full += text
-                            onChunk(text)
+                        if let type = obj["type"] as? String {
+                            if type == "content_block_delta",
+                               let delta = obj["delta"] as? [String: Any],
+                               let text = delta["text"] as? String {
+                                full += text
+                                onChunk(text)
+                            } else if type == "message_delta",
+                                      let delta = obj["delta"] as? [String: Any],
+                                      let stop = delta["stop_reason"] as? String,
+                                      stop == "max_tokens" {
+                                truncated = true
+                            }
                         }
                     }
-                    onDone(full)
+                    onDone(full, truncated)
                     return
                 } catch {
                     if attempt < 3 {

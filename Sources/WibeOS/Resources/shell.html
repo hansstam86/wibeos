@@ -96,12 +96,15 @@
   .glitch:hover { filter: brightness(1.12); }
   .win.glitched .glitch { display: block; }
 
-  /* regen veil */
-  .veil { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
-    background: rgba(250,250,252,.45); backdrop-filter: blur(2px); z-index: 4; }
+  /* update indicator: subtle — old content stays fully visible, just a pill + shimmer */
+  .veil { position: absolute; inset: 0; display: none; align-items: flex-start;
+    justify-content: center; background: transparent; z-index: 4; }
+  .veil::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%; animation: sh 1.1s linear infinite; }
   .win.updating .veil { display: flex; }
-  .vsp { background: rgba(30,30,36,.85); color: #fff; font-size: 13px; padding: 8px 16px;
-    border-radius: 20px; animation: pulse 1.2s ease-in-out infinite; }
+  .vsp { margin-top: 10px; background: rgba(30,30,36,.82); color: #fff; font-size: 12px;
+    padding: 5px 14px; border-radius: 20px; animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .55; } }
 
   /* error */
@@ -350,7 +353,7 @@
   "use strict";
 
   /* ============ state ============ */
-  var CACHE_V = 7; // bump to invalidate cached apps when the bridge/prompt changes
+  var CACHE_V = 12; // bump to invalidate cached apps when the bridge/prompt changes
   var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {}, persona: null, fs: [] };
 
   /* ============ wibe.fs: per-persona shared files ============ */
@@ -520,6 +523,8 @@
   var installed = {};  // personaName -> [{name, icon, hint}]
 
   function cacheKey(app) {
+    var s = APPS.find(function (a) { return a.name === app; });
+    if (s && s.shared) return "_shared::" + app; // persona-neutral apps generate once, ever
     return (state.persona ? state.persona.name : "_") + "::" + app;
   }
   function savePrefs() {
@@ -612,26 +617,33 @@
   }
 
   /* ============ default apps ============ */
+  var SMART = "claude-sonnet-4-6"; // complex apps need the careful model
+  function modelFor(app) {
+    var s = APPS.find(function (a) { return a.name === app; });
+    return (s && s.model) || null;
+  }
   var APPS = [
     { name: "Finder", icon: "📁", w: 860, h: 540,
+      model: SMART,
       hint: "macOS Finder built ENTIRELY on the real file system (wibe.fs): sidebar folders (Desktop, Documents, Downloads, Photos, Music) derived from wibe.fs.list() paths, toolbar with back/forward, icon grid of the actual files. Double-click a file → preview panel showing wibe.fs.read(path), editable + savable with wibe.fs.write. Delete key or context button → wibe.fs.remove. New Folder/New File buttons create via wibe.fs.write. Listen to the 'wibe-fs' window event and re-render the grid so changes from other apps appear live. Do NOT invent fake files — show only what wibe.fs returns." },
-    { name: "Safari", icon: "🧭", w: 980, h: 640,
-      hint: "Web browser. Toolbar with back/forward, address bar with data-wibe-enter=\"navigate: hallucinate the full web page for this URL or search query, keeping the browser chrome\". Start page with a favorites grid of fake sites, each tile data-wibe to visit it. Pages must be rich and plausible with real-looking copy, nav, images-as-CSS." },
-    { name: "Calculator", icon: "🧮", w: 270, h: 420,
+    { name: "Jungle", icon: "🦜", w: 980, h: 640, model: SMART,
+      hint: "Jungle — the wibeOS web browser (lush green accents, parrot logo as emoji). STRUCTURE IS CRITICAL: a fixed toolbar (back/forward, address bar) and below it ONE container <div id=\"page\"> filling the rest, holding the current page. The chrome must NEVER re-render. Address bar: data-wibe-enter=\"navigate: respond with ONLY <wibe-patch select='#page'> containing the full hallucinated page for this URL/search\". Start page inside #page: favorites grid of INVENTED fake sites (never real brands), each tile data-wibe=\"navigate: patch #page with this site\". Every link inside hallucinated pages gets a similar data-wibe navigate attribute. ALL navigation responses must be a single <wibe-patch select=\"#page\"> — never a full document. Pages must be rich and plausible with real-looking copy, nav, images-as-CSS. Default search engine: 'Macaw'." },
+    { name: "Calculator", icon: "🧮", w: 270, h: 420, shared: true, model: SMART,
       hint: "Fully working macOS-style calculator (dark style, orange operator buttons), computed entirely locally in JavaScript including chained operations, %, +/-, decimals. No data-wibe anywhere." },
     { name: "Notes", icon: "📝", w: 820, h: 520,
       hint: "Apple Notes look: yellow accents, sidebar listing notes stored in the REAL file system under /Documents/Notes/ (wibe.fs.list), note body editable (contenteditable) and auto-saved with wibe.fs.write on input (debounced). New note creates a file; delete removes it. If /Documents/Notes/ is empty, seed 3 entertaining in-character notes via wibe.fs.write on first run. Listen to 'wibe-fs' to refresh the sidebar." },
-    { name: "Mail", icon: "✉️", w: 940, h: 600,
-      hint: "Mail client: three-pane (mailboxes, message list, reading pane) with ~8 hallucinated entertaining-but-plausible emails (newsletters, a boss, a confused relative). Reading and composing work locally; Send shows a whoosh confirmation locally." },
-    { name: "Messages", icon: "💬", w: 900, h: 580,
-      hint: "iMessage-style Messages app. Each contact is a file /Messages/<Name>.json holding {\"meta\":{\"name\",\"emoji\",\"personality\"},\"messages\":[{from,text,time}]} (when parsing, tolerate older plain-array files via try/catch). STARTUP ORDER MATTERS: (1) read wibe.fs.list('/Messages/'); (2) if empty, FIRST seed 4 contacts — invented people from the persona's world (a friend, a relative, a nemesis, one weird acquaintance) with distinct personalities and 2-3 starter messages each, via wibe.fs.write; (3) THEN render the sidebar (avatar, name, last-message preview). The sidebar must NEVER be empty. A '+' NEW CONTACT button at the top of the sidebar opens a small form: name + optional 'who are they?' field; on create, invent an emoji avatar and a vivid personality (from the description, or made up to fit the persona's world if blank), write the new /Messages/<Name>.json with meta and an opening message FROM the new contact, select them, and wibe.notify. Clicking a contact shows the conversation. Sending: append the user's blue bubble, save, show a typing indicator, then wibe.ai.ask with the contact's personality, the last ~10 messages and the new message, requesting ONLY the contact's reply text; append the gray reply, save, and wibe.notify(contactName, reply, '💬'). Timestamps, Enter to send." },
+    { name: "Mail", icon: "✉️", w: 940, h: 600, model: SMART,
+      hint: "Mail client: three-pane (mailboxes, message list, reading pane) with ~8 hallucinated entertaining-but-plausible emails (newsletters, a boss, a confused relative) embedded as static data. SELECTING AND READING MESSAGES IS 100% LOCAL JavaScript — the email bodies are already in the page; wire list rows with data-key attributes and one delegated listener, never data-wibe and never inline onclick interpolation. Composing works locally; Send shows a whoosh confirmation locally." },
+    { name: "Messages", icon: "💬", w: 900, h: 580, model: SMART,
+      hint: "Messages app in the familiar blue-bubble chat style. BRANDING: the word 'iMessage' must NEVER appear anywhere in the UI — the text field placeholder is 'Message…', and any delivery/service label reads 'wibeMessage' in blue. A contact = file /Messages/<Name>.json: {\"meta\":{\"name\",\"emoji\",\"personality\"},\"messages\":[{from,text,time}]} (tolerate plain-array files via try/catch). Startup: wibe.fs.list('/Messages/'); if empty, seed 4 in-character contacts (friend, relative, nemesis, weird acquaintance) with personalities and 2-3 starter messages BEFORE rendering — the sidebar must never be empty. REQUIRED FEATURE, do not omit: a prominent '+ New Contact' button at the top of the sidebar. It opens a small inline form (name, optional 'who are they?'); on submit, invent an emoji avatar and vivid personality (from the description, or invented to fit the persona's world), write the contact file with an opening message FROM them, select the contact, wibe.notify. NAVIGATION IS 100% LOCAL: clicking a contact renders its conversation from the already-loaded wibe.fs data with plain JavaScript — absolutely NO data-wibe attributes on contact rows and no re-render requests for switching conversations. Contact filenames contain spaces and dots ('/Messages/Uncle Roy.json') — wire sidebar clicks with data-key attributes plus ONE delegated listener on the list container; NEVER inline onclick with interpolated strings. Send flow: append user's blue bubble, save, typing indicator, wibe.ai.ask(contact personality + last 10 messages + new message → ONLY the reply text), append gray bubble, save, wibe.notify(name, reply, '💬'). Enter sends." },
     { name: "Photos", icon: "🌸", w: 900, h: 580,
       hint: "Photos app: grid of 12+ 'photos' built from CSS gradients + emoji compositions (sunsets, cats, vacations) with dates, written as STATIC HTML markup (no JS-generated grid). Clicking opens a large lightbox view locally. Memories row on top." },
     { name: "Music", icon: "🎵", w: 880, h: 560,
       hint: "Music player: sidebar, album grid of invented artists/albums with CSS-art covers (static HTML), now-playing bar. Playback uses the OS music engine: wibe.music.play({title, artist, genre}) on track click, pause/resume/setVolume wired to the controls, and an animated equalizer driven by wibe.music.getLevels() polled in requestAnimationFrame. Give each invented track a genre (pop/rock/lofi/hiphop/edm/ambient) so songs sound distinct. All local." },
     { name: "Terminal", icon: "⬛", w: 700, h: 450,
+      model: SMART,
       hint: "A REAL working terminal. Layout: scrollback div + one visible <input> on the prompt line (autofocus on load AND refocus whenever the window body is clicked; Enter runs the command, up/down arrows walk history). Commands operate on the REAL file system via wibe.fs: ls / ls <dir> (list wibe.fs paths), cat <file> (wibe.fs.read), rm <file> (wibe.fs.remove), touch <file> and echo text > file (wibe.fs.write), cd/pwd (track a cwd string), plus clear, whoami, date, uname, neofetch (wibeOS ASCII art). For any UNKNOWN command, print a dim 'running…' line and call wibe.ai.ask('You are the wibeOS terminal. Output for command: <cmd>') then print the result. Dark theme, monospace, blocky cursor. Test the input wiring mentally — typing MUST work." },
-    { name: "App Store", icon: "🛍️", w: 980, h: 640,
+    { name: "App Store", icon: "🛍️", w: 980, h: 640, model: SMART,
       hint: "The wibeOS App Store, tailored entirely to the logged-in persona: featured banner, category chips, grid of 9-12 invented apps THIS persona would crave — emoji icon, name, tagline, star rating, price (Free/$4.99), one funny review quote each. Every card has a Get button: on click call wibe.install(appName, emoji, oneLineAppDescription), then turn the button into Open which calls wibe.open(appName, sameDescription). Static HTML + local JS only." },
     { name: "Trash", icon: "🗑", w: 540, h: 380,
       hint: "The Trash window: a few comically regrettable deleted files with sizes and dates. Empty Trash works locally with a satisfying poof animation." }
@@ -643,7 +655,25 @@
   }
 
   function strip(html) {
-    return String(html).replace(/^\s*```(?:html)?\s*/i, "").replace(/```\s*$/, "");
+    var s = String(html);
+    var f = s.match(/```(?:html)?\s*([\s\S]*?)```/);     // complete fenced block anywhere
+    if (f) s = f[1];
+    else s = s.replace(/^[\s\S]*?```(?:html)?\s*/i, function (m) {
+      return m.length < 400 ? "" : m;                     // unclosed fence with short preamble
+    }).replace(/```\s*$/, "");
+    // drop any conversational preamble before the document starts
+    var i = s.search(/<!DOCTYPE|<html|<wibe-patch|<head[\s>]|<body[\s>]|<style[\s>]|<div[\s>]|\{|\[/i);
+    if (i > 0 && i < 400) s = s.slice(i);
+    return s;
+  }
+
+  /* like strip(), but for app documents/patches: removes prose preambles of ANY
+     length — the model's commentary must never reach the screen or the history */
+  function stripDoc(html) {
+    var s = strip(html);
+    var i = s.search(/<!DOCTYPE|<html[\s>]|<wibe-patch|<head[\s>]|<body[\s>]|<style[\s>]|<div[\s>]|<main[\s>]|<section[\s>]/i);
+    if (i > 0) s = s.slice(i);
+    return s;
   }
 
   /* script injected into every generated app so it can talk back */
@@ -716,14 +746,19 @@
     "document.addEventListener('click',function(e){" +
     "var a=e.target.closest&&e.target.closest('a[href]');if(a){var h=a.getAttribute('href');" +
     "if(h==='#'||/^https?:/i.test(h))e.preventDefault();}},true);" +
+    "var _deadHit={};" +
     "document.addEventListener('click',function(e){" +
     "var t=e.target.closest&&e.target.closest(\"button,a,[role='button'],input[type='button'],input[type='submit'],.btn,[onclick]\");" +
-    "if(!t)return;if(t.closest('[data-wibe],[data-wibe-enter]'))return;" +
-    "var before=Date.now();var desc=describe(t);" +
+    "if(!t)return;" +
+    "if(t.closest('[data-wibe],[data-wibe-enter],[data-btn],[data-key],[data-action],[data-nav],[data-app]'))return;" +
+    "var sig=(t.tagName||'')+'|'+(t.id||'')+'|'+(t.textContent||'').slice(0,24);" +
+    "if(_deadHit[sig])return;" +               /* only ever report a given control once */
+    "var before=Date.now()-1;var desc=describe(t);" + /* -1: same-ms mutations must count as 'after' */
     "setTimeout(function(){" +
     "if(_mut>before)return;if((window.__wibeAct||0)>before)return;" +
+    "_deadHit[sig]=1;" +
     "fire('Dead control clicked: nothing happened. Implement the intended behavior of this control and re-render showing the result.',desc);" +
-    "},400);},false);" +
+    "},650);},false);" +
     /* WebKit creates AudioContexts suspended; auto-resume them on any user gesture */
     "var _AC=window.AudioContext||window.webkitAudioContext;" +
     "if(_AC){var _acs=[];var _P=function(){var c=new _AC();_acs.push(c);return c;};" +
@@ -1122,7 +1157,7 @@
 
   /* render partial app HTML safely: styles apply, scripts and partial tags dropped */
   function previewHtml(html) {
-    var h = strip(html);
+    var h = stripDoc(html);
     h = h.replace(/<!DOCTYPE[^>]*>/gi, "")
          .replace(/<\/?(html|head|body)[^>]*>/gi, "")
          .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, "")
@@ -1184,8 +1219,27 @@
       var w = state.wins[id];
       if (w) w.buf += t; // updates keep the old UI under the veil
     },
-    done: function (id) {
+    done: function (id, trunc) {
       var p = state.gen[id];
+      if (p && trunc && !p.kind) {
+        if (!p.truncRetry) {
+          // app creation ran out of tokens: silently retry once with much more room
+          p.truncRetry = true;
+          p.buf = "";
+          if (p.win) p.win.previewEl.innerHTML = "";
+          post({ id: p.id, messages: p.history, max: 8000, model: modelFor(p.app) });
+          return;
+        }
+        // retry ALSO truncated: never mount or cache a half-finished app
+        delete state.gen[id];
+        if (p.win && state.wins[p.win.id]) {
+          p.win.el.classList.remove("generating");
+          p.win.el.classList.add("failed");
+          p.win.errMsgEl.textContent = "the app was too ambitious for one breath — try again";
+        }
+        pump();
+        return;
+      }
       if (p && p.kind === "ai") {
         delete state.gen[id];
         var wv = state.wins[p.winId];
@@ -1240,8 +1294,8 @@
       }
       if (p) {
         delete state.gen[id];
-        p.history.push({ role: "assistant", content: p.buf });
-        var raw = strip(p.buf); // cache RAW html; bridge is injected at mount time
+        var raw = stripDoc(p.buf); // cleaned html: bridge injected at mount time
+        p.history.push({ role: "assistant", content: raw }); // history never sees preambles
         state.cache[p.ck] = { doc: raw, history: p.history.slice(), v: CACHE_V };
         post({ control: "savecache", app: p.ck, doc: raw, history: p.history, v: CACHE_V });
         if (p.win && state.wins[p.win.id]) {
@@ -1255,14 +1309,39 @@
       }
       var w = state.wins[id];
       if (!w) return;
-      w.history.push({ role: "assistant", content: w.buf });
-      trimHistory(w);
-      var patches = parsePatches(w.buf);
+      if (trunc && !w.truncRetry) {
+        // update ran out of tokens: retry once with more room (history still ends with user msg)
+        w.truncRetry = true;
+        w.buf = "";
+        post({ id: w.id, messages: w.history, max: 6500, model: modelFor(w.app) });
+        return;
+      }
+      if (trunc) {
+        // retry also truncated: discard, keep the working app on screen
+        w.truncRetry = false;
+        if (w.history.length && w.history[w.history.length - 1].role === "user") w.history.pop();
+        w.buf = "";
+        w.el.classList.remove("updating", "failed");
+        return;
+      }
+      w.truncRetry = false;
+      var cleaned = stripDoc(w.buf);
+      var patches = parsePatches(cleaned);
+      var isDoc = /^\s*(<!DOCTYPE|<html[\s>]|<head[\s>]|<body[\s>]|<style[\s>]|<div[\s>]|<main[\s>]|<section[\s>])/i.test(cleaned);
       if (patches) {
         // fast path: surgically update the live app, no remount
+        w.history.push({ role: "assistant", content: cleaned });
+        trimHistory(w);
         w.iframe.contentWindow.postMessage({ wibe: "patch", patches: patches }, "*");
-      } else {
+      } else if (isDoc) {
+        w.history.push({ role: "assistant", content: cleaned });
+        trimHistory(w);
         mount(w, w.buf);
+      } else {
+        // neither patch nor document (e.g. "nothing to fix" prose): DISCARD.
+        // Keep the working app on screen; drop the triggering user msg so it
+        // doesn't pollute future context.
+        if (w.history.length && w.history[w.history.length - 1].role === "user") w.history.pop();
       }
       w.buf = "";
       w.el.classList.remove("updating", "failed");
@@ -1308,7 +1387,7 @@
 
   function sendGen(w) {
     w.buf = "";
-    post({ id: w.id, messages: w.history, max: 2500 }); // updates are smallish (often patches)
+    post({ id: w.id, messages: w.history, max: 2500, model: modelFor(w.app) });
   }
 
   function trimHistory(w) {
@@ -1319,7 +1398,7 @@
   }
 
   function parsePatches(text) {
-    var t = strip(text).trim();
+    var t = stripDoc(text).trim();
     if (!/^<wibe-patch/i.test(t)) return null;
     var re = /<wibe-patch\s+select="([^"]+)"\s*>([\s\S]*?)<\/wibe-patch>/gi;
     var out = [], m;
@@ -1331,7 +1410,7 @@
     // inject at the TOP of body so the bridge (AudioContext wrapper, error
     // reporting) is installed before any app code runs. The file-system
     // snapshot goes first so apps see their files from the very first line.
-    var doc = strip(html);
+    var doc = stripDoc(html);
     var snap = "<script>window.__wibeFS=" +
       JSON.stringify(state.fs).replace(/<\//g, "<\\/") +
       ";<\/script>";
@@ -1342,7 +1421,7 @@
   }
 
   function mount(w, html) {
-    var raw = strip(html); // cache RAW html; bridge is injected at mount time
+    var raw = stripDoc(html); // cleaned html; bridge is injected at mount time
     w.iframe.srcdoc = withBridge(raw);
     state.cache[cacheKey(w.app)] = { doc: raw, history: w.history.slice(), v: CACHE_V };
     post({ control: "savecache", app: cacheKey(w.app), doc: raw, history: w.history, v: CACHE_V });
@@ -1374,7 +1453,7 @@
         '<div class="preview"></div>' +
         '<div class="genpill">✨ hallucinating ' + esc(app) + "…</div>" +
         '<div class="glitch" title="">⚠️ glitched — re-imagine</div>' +
-        '<div class="veil"><div class="vsp">✨ re-imagining…</div></div>' +
+        '<div class="veil"><div class="vsp">✨ imagining…</div></div>' +
         '<div class="werr"><div style="font-size:34px">💥</div><div>vibes interrupted</div>' +
           '<div class="werrmsg" style="color:#999;font-size:11px;max-width:90%"></div>' +
           '<button data-act="retry">Try Again</button></div>' +
@@ -1532,14 +1611,22 @@
       p = { id: "g" + (state.nextId++), app: w.app, ck: cacheKey(w.app), buf: "", win: null, raf: null,
             history: [createMsg(w.app, w.hint)] };
       state.gen[p.id] = p;
-      post({ id: p.id, messages: p.history, max: 3500 });
+      post({ id: p.id, messages: p.history,
+             max: modelFor(w.app) ? 4500 : 3500, model: modelFor(w.app) });
     }
     p.win = w;
     w.el.classList.add("generating");
     if (p.buf) w.previewEl.innerHTML = previewHtml(p.buf);
   }
 
-  /* background prefetch of dock apps, 2 generations at a time */
+  /* background prefetch of dock apps — demo-relevant apps first.
+     Concurrency default 2 (tier-1 rate limits); raise with WIBEOS_CONCURRENCY
+     after upgrading your Anthropic tier. */
+  var PF_ORDER = { Messages: 1, Finder: 2, Mail: 3, Calculator: 4, Jungle: 5,
+                   Music: 6, Notes: 7, Photos: 8, Terminal: 9, "App Store": 10, Trash: 11 };
+  function pumpLimit() {
+    return Math.max(1, Math.min(4, window.WIBE_CONC || 2));
+  }
   var pfQueue = [];
   function prefetchAll() {
     if (window.WIBE_PREFETCH === false) return;
@@ -1547,18 +1634,19 @@
     APPS.forEach(function (a) {
       if (!state.cache[cacheKey(a.name)] && !findGen(a.name)) pfQueue.push(a);
     });
-    pump();
-    pump();
+    pfQueue.sort(function (a, b) { return (PF_ORDER[a.name] || 99) - (PF_ORDER[b.name] || 99); });
+    for (var i = 0; i < pumpLimit(); i++) pump();
   }
   function pump() {
-    if (Object.keys(state.gen).length >= 2) return; // stay under org rate limits
+    if (Object.keys(state.gen).length >= pumpLimit()) return;
     var a = pfQueue.shift();
     if (!a) return;
     if (state.cache[cacheKey(a.name)] || findGen(a.name)) { pump(); return; }
     var p = { id: "g" + (state.nextId++), app: a.name, ck: cacheKey(a.name), buf: "", win: null, raf: null,
               history: [createMsg(a.name, a.hint)] };
     state.gen[p.id] = p;
-    post({ id: p.id, messages: p.history, max: 3500 });
+    post({ id: p.id, messages: p.history,
+           max: modelFor(a.name) ? 4500 : 3500, model: modelFor(a.name) });
   }
 
   function openApp(app, icon, hint, force) {

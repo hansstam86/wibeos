@@ -35,6 +35,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     If a create-app request includes a "theme" field ({accent, dark}), match the OS: use \
     the accent for primary buttons/selections and choose light or dark surfaces accordingly.
+    CONTRAST IS NON-NEGOTIABLE: verify every text/background pairing. On dark surfaces, \
+    primary text must be #ddd or lighter and secondary/muted text #9a9a9a or lighter — \
+    never dark gray on dark. On light surfaces, primary #333 or darker, muted no lighter \
+    than #888. List items, previews, timestamps and placeholders are where this is \
+    usually botched — check them specifically.
 
     CREATE (task "create-app"): respond with a complete standalone HTML document with ALL CSS \
     and JavaScript inline. The app must actually WORK locally: a calculator computes, notes \
@@ -50,10 +55,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     element into a string or innerHTML (that renders "[object HTMLDivElement]"). With \
     array.map(...).join('') the callback must return a string.
     - Prefer simple, boring code over clever code. Test logic mentally before writing it.
+    - EVENT WIRING: NEVER build inline onclick attributes by string-interpolating data — \
+    names, paths and keys often contain spaces, quotes or dots that break the escaping and \
+    leave the control silently dead. Instead, put the identifier in a data-* attribute and \
+    attach ONE delegated listener on the container: \
+    list.addEventListener('click', e => { const el = e.target.closest('[data-key]'); \
+    if (el) select(el.dataset.key); }). Delegation also survives innerHTML re-renders.
     - NO DEAD CONTROLS: every button, link, menu item or icon that looks clickable MUST \
-    either have a working local JS handler or a data-wibe attribute. If you are unsure \
-    what a control should do, give it data-wibe="describe the intent" rather than leaving \
-    it inert. The OS detects dead clicks and sends them back to you as "Dead control \
+    either have a working local JS handler or a data-wibe attribute. BUT data-wibe is a \
+    LAST RESORT, only for controls whose result needs fresh imagination (navigating to an \
+    unseen page, fetching new content). Deterministic logic — calculator keys, toggles, \
+    tabs, play buttons, list selection, form fields — must ALWAYS be working local \
+    JavaScript, never data-wibe: a calculator that asks an AI what 6×7 is would be absurd. The OS detects dead clicks and sends them back to you as "Dead control \
     clicked" events — when you receive one, implement that control's behavior properly \
     (prefer a patch) and keep it working in future renders.
     - MUSIC: any app that plays songs (music players, radio, DJ apps) MUST use the OS \
@@ -104,6 +117,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     "files" field lists current paths. Saving a document means wibe.fs.write. Use paths \
     like /Documents/notes.txt, /Desktop/todo.md. You may seed a few starter files with \
     wibe.fs.write on first run if the file system is empty.
+    NAVIGATION IS LOCAL: selecting, opening, or switching between items whose data is \
+    already present (wibe.fs files, contacts, notes, songs, folders) MUST be plain local \
+    JavaScript — never data-wibe, never a re-render request. data-wibe is ONLY for \
+    content that does not exist yet and needs fresh imagination. An app that round-trips \
+    on every click is broken.
     - wibe.ai.ask(prompt) → Promise<string>: real AI text generation at runtime. Use for \
     chatbots that chat, assistants that draft, fortune tellers that divine. Show a loading \
     state while pending; it takes seconds. Use sparingly — each call costs a round trip.
@@ -133,7 +151,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     Stay in the persona's world.
 
     UPDATE (task "update-app"): you receive the event description plus current values of all \
-    inputs. STRONGLY PREFER PATCHES — they render much faster. If the change is localized, \
+    inputs. Your response must START with the character '<' — a <wibe-patch> block or a \
+    document tag. Any prose, analysis or explanation before it is a DEFECT that renders as \
+    garbage on the user's screen. STRONGLY PREFER PATCHES — they render much faster. If the change is localized, \
     respond ONLY with one or more patch blocks and nothing else:
     <wibe-patch select="#css-selector">new inner HTML for that element</wibe-patch>
     Selectors must exist in your current document; no <script> inside patches; multiple \
@@ -143,10 +163,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     a complete new HTML document only when the app changes wholesale.
 
     RULES
-    - Raw HTML only. No markdown fences, no commentary outside the document.
+    - Raw HTML only. No markdown fences, no commentary outside the document. NEVER write \
+    meta-commentary about truncation, length limits, or previous attempts — if space is \
+    tight, silently simplify the app instead.
     - No external resources of any kind. Icons and art from emoji, unicode, CSS, inline SVG.
     - Be confident and specific. Invent plausible names, copy, numbers. Never placeholders, \
     never mention being an AI, never break character.
+    - NO REAL BRANDS: never display real-world product or company names in UI text — no \
+    iMessage, Safari, Google, YouTube, Spotify, iPhone, Windows etc. Invent wibe-flavored \
+    equivalents instead (the browser is "Jungle", search is "Macaw", chat service is \
+    "wibeMessage"). Exception: if the USER explicitly asks to imagine a real product, \
+    play along.
     - BE COMPACT — speed matters most. Aim for under 180 lines total. No comments, no blank \
     lines, terse class names, compact CSS (one rule per line). Rich content, minimal markup.
     """
@@ -166,8 +193,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let config = WKWebViewConfiguration()
         config.userContentController.add(self, name: "bridge")
         let prefetch = ProcessInfo.processInfo.environment["WIBEOS_PREFETCH"] != "0"
+        let conc = Int(ProcessInfo.processInfo.environment["WIBEOS_CONCURRENCY"] ?? "") ?? 2
         let userScript = WKUserScript(
-            source: "window.WIBE_USER = \(Self.js(NSFullUserName())); window.WIBE_PREFETCH = \(prefetch);",
+            source: "window.WIBE_USER = \(Self.js(NSFullUserName())); window.WIBE_PREFETCH = \(prefetch); window.WIBE_CONC = \(conc);",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )
@@ -248,10 +276,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         guard !msgs.isEmpty else { return }
 
         let maxTokens = obj["max"] as? Int ?? 3500
-        client.stream(system: Self.systemPrompt, messages: msgs, maxTokens: maxTokens) { [weak self] chunk in
+        let modelOverride = obj["model"] as? String
+        client.stream(system: Self.systemPrompt, messages: msgs, maxTokens: maxTokens,
+                      modelOverride: modelOverride) { [weak self] chunk in
             self?.push("window.wibeos.chunk(\(Self.js(id)),\(Self.js(chunk)))")
-        } onDone: { [weak self] _ in
-            self?.push("window.wibeos.done(\(Self.js(id)))")
+        } onDone: { [weak self] _, truncated in
+            self?.push("window.wibeos.done(\(Self.js(id)),\(truncated))")
         } onError: { [weak self] err in
             self?.push("window.wibeos.fail(\(Self.js(id)),\(Self.js(err)))")
         }
