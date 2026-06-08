@@ -192,6 +192,33 @@
   .spr .st { color: rgba(255,255,255,.5); margin-left: auto; font-size: 11px;
     max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+  /* ---------- Launchpad (App Dashboard) ---------- */
+  #launchpad { position: fixed; inset: 0; z-index: 2550;
+    background: rgba(20,20,28,.55); backdrop-filter: blur(34px);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 9vh; opacity: 1; transition: opacity .18s; }
+  #launchpad[hidden] { display: none; }
+  #launchpad.closing { opacity: 0; }
+  #lpsearch { width: 320px; padding: 9px 16px; border-radius: 10px; font-size: 15px;
+    text-align: center; color: #fff; background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.2); outline: 0; margin-bottom: 42px;
+    -webkit-user-select: text; user-select: text; }
+  #lpsearch::placeholder { color: rgba(255,255,255,.5); }
+  #lpgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 30px 44px;
+    width: min(900px, 86vw); justify-items: center; align-content: start;
+    overflow: auto; max-height: 70vh; padding: 4px 8px 40px; }
+  .lpapp { display: flex; flex-direction: column; align-items: center; gap: 9px;
+    cursor: pointer; width: 96px; transition: transform .12s; }
+  .lpapp:hover { transform: scale(1.09); }
+  .lpapp .lpic { width: 66px; height: 66px; border-radius: 16px; font-size: 38px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+  .lpapp .lpname { color: #fff; font-size: 12.5px; text-align: center; line-height: 1.2;
+    text-shadow: 0 1px 6px rgba(0,0,0,.5); max-width: 96px; }
+  #lpgrid .lpempty { grid-column: 1 / -1; color: rgba(255,255,255,.5); font-size: 14px;
+    text-align: center; padding-top: 30px; }
+
   /* ---------- Login ---------- */
   #login { position: fixed; inset: 0; z-index: 4000; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 38px; transition: opacity .5s;
@@ -295,6 +322,11 @@
       <input id="spotin" placeholder="wibeOS Search — apps, files, or anything you can imagine">
       <div id="spotres"></div>
     </div>
+  </div>
+
+  <div id="launchpad" hidden>
+    <input id="lpsearch" placeholder="Search">
+    <div id="lpgrid"></div>
   </div>
 
   <div id="windows"></div>
@@ -661,18 +693,18 @@
     return (s && s.model) || null;
   }
   var APPS = [
-    { name: "Finder", icon: "📁", w: 860, h: 540,
+    { name: "Finder", icon: "📁", w: 860, h: 540, dock: true,
       model: SMART,
       hint: "macOS Finder built ENTIRELY on the real file system (wibe.fs): sidebar folders (Desktop, Documents, Downloads, Photos, Music) derived from wibe.fs.list() paths, toolbar with back/forward, icon grid of the actual files. Double-click a file → preview panel showing wibe.fs.read(path), editable + savable with wibe.fs.write. Delete key or context button → wibe.fs.remove. New Folder/New File buttons create via wibe.fs.write. Listen to the 'wibe-fs' window event and re-render the grid so changes from other apps appear live. Do NOT invent fake files — show only what wibe.fs returns." },
-    { name: "Jungle", icon: "🦜", w: 980, h: 640, model: SMART,
+    { name: "Jungle", icon: "🦜", w: 980, h: 640, dock: true, model: SMART,
       hint: "Jungle — the wibeOS web browser (lush green accents, parrot logo as emoji). STRUCTURE IS CRITICAL: a fixed toolbar (back/forward, address bar) and below it ONE container <div id=\"page\"> filling the rest, holding the current page. The chrome must NEVER re-render. Address bar: data-wibe-enter=\"navigate: respond with ONLY <wibe-patch select='#page'> containing the full hallucinated page for this URL/search\". Start page inside #page: favorites grid of INVENTED fake sites (never real brands), each tile data-wibe=\"navigate: patch #page with this site\". Every link inside hallucinated pages gets a similar data-wibe navigate attribute. ALL navigation responses must be a single <wibe-patch select=\"#page\"> — never a full document. Pages must be rich and plausible with real-looking copy, nav, images-as-CSS. Default search engine: 'Macaw'." },
     { name: "Calculator", icon: "🧮", w: 270, h: 420, shared: true, model: SMART,
       hint: "Fully working macOS-style calculator (dark style, orange operator buttons), computed entirely locally in JavaScript including chained operations, %, +/-, decimals. No data-wibe anywhere." },
-    { name: "Notes", icon: "📝", w: 820, h: 520,
+    { name: "Notes", icon: "📝", w: 820, h: 520, dock: true,
       hint: "Apple Notes look: yellow accents, sidebar listing notes stored in the REAL file system under /Documents/Notes/ (wibe.fs.list), note body editable (contenteditable) and auto-saved with wibe.fs.write on input (debounced). New note creates a file; delete removes it. If /Documents/Notes/ is empty, seed 3 entertaining in-character notes via wibe.fs.write on first run. Listen to 'wibe-fs' to refresh the sidebar." },
-    { name: "Mail", icon: "✉️", w: 940, h: 600, model: SMART,
+    { name: "Mail", icon: "✉️", w: 940, h: 600, dock: true, model: SMART,
       hint: "Mail client: three-pane (mailboxes, message list, reading pane) with ~8 hallucinated entertaining-but-plausible emails (newsletters, a boss, a confused relative) embedded as static data. SELECTING AND READING MESSAGES IS 100% LOCAL JavaScript — the email bodies are already in the page; wire list rows with data-key attributes and one delegated listener, never data-wibe and never inline onclick interpolation. Composing works locally; Send shows a whoosh confirmation locally." },
-    { name: "Messages", icon: "💬", w: 900, h: 580, model: SMART,
+    { name: "Messages", icon: "💬", w: 900, h: 580, dock: true, model: SMART,
       hint: "Messages app in the familiar blue-bubble chat style. BRANDING: the word 'iMessage' must NEVER appear anywhere in the UI — the text field placeholder is 'Message…', and any delivery/service label reads 'wibeMessage' in blue. A contact = file /Messages/<Name>.json: {\"meta\":{\"name\",\"emoji\",\"personality\"},\"messages\":[{from,text,time}]} (tolerate plain-array files via try/catch). Startup: wibe.fs.list('/Messages/'); if empty, seed 4 in-character contacts (friend, relative, nemesis, weird acquaintance) with personalities and 2-3 starter messages BEFORE rendering — the sidebar must never be empty. REQUIRED FEATURE, do not omit: a prominent '+ New Contact' button at the top of the sidebar. It opens a small inline form (name, optional 'who are they?'); on submit, invent an emoji avatar and vivid personality (from the description, or invented to fit the persona's world), write the contact file with an opening message FROM them, select the contact, wibe.notify. NAVIGATION IS 100% LOCAL: clicking a contact renders its conversation from the already-loaded wibe.fs data with plain JavaScript — absolutely NO data-wibe attributes on contact rows and no re-render requests for switching conversations. Contact filenames contain spaces and dots ('/Messages/Uncle Roy.json') — wire sidebar clicks with data-key attributes plus ONE delegated listener on the list container; NEVER inline onclick with interpolated strings. Send flow: append user's blue bubble, save, typing indicator, wibe.ai.ask(contact personality + last 10 messages + new message → ONLY the reply text), append gray bubble, save, wibe.notify(name, reply, '💬'). Enter sends." },
     { name: "Photos", icon: "🌸", w: 900, h: 580,
       hint: "Photos app: grid of 12+ 'photos' built from CSS gradients + emoji compositions (sunsets, cats, vacations) with dates, written as STATIC HTML markup (no JS-generated grid). Clicking opens a large lightbox view locally. Memories row on top." },
@@ -1887,7 +1919,16 @@
   function refreshDock() {
     var dock = $("dock");
     dock.innerHTML = "";
-    APPS.forEach(function (a) { dock.appendChild(dockIcon(a.name, a.icon)); });
+    // Launchpad — opens the full App Dashboard (all apps)
+    var lp = document.createElement("div");
+    lp.className = "dicon";
+    lp.innerHTML = "🚀<span class='tip'>Launchpad (F4)</span><span class='dot'></span>";
+    lp.addEventListener("click", launchpadOpen);
+    dock.appendChild(lp);
+    var sepL = document.createElement("div"); sepL.className = "dsepv"; dock.appendChild(sepL);
+    // Only the Core dock apps appear here; everything else lives in Launchpad.
+    APPS.filter(function (a) { return a.dock; })
+        .forEach(function (a) { dock.appendChild(dockIcon(a.name, a.icon)); });
     // apps installed from the App Store (per persona)
     var inst = (state.persona && installed[state.persona.name]) || [];
     if (inst.length) {
@@ -2083,12 +2124,15 @@
     if (e.metaKey && e.key === "w") { e.preventDefault(); var f = front(); if (f) closeWin(f); }
     if (e.metaKey && (e.key === "k" || e.key === " ")) { e.preventDefault(); spotOpen(); }
     if (e.metaKey && e.key === ",") { e.preventDefault(); openSettings(); }
+    // F4 → Launchpad (App Dashboard) toggle
+    if (e.key === "F4") { e.preventDefault(); launchpadOpen(); }
     // Ctrl+↑ → Mission Control (toggle)
     if (e.ctrlKey && (e.key === "ArrowUp" || e.key === "Up")) { e.preventDefault(); missionControl(); }
     // Cmd+Shift+3 → screenshot the hallucinated desktop out "to reality"
     if (e.metaKey && e.shiftKey && e.key === "3") { e.preventDefault(); takeScreenshot(); }
     if (e.key === "Escape") {
-      if (mcOpen) missionControlClose();
+      if (lpOpen) launchpadClose();
+      else if (mcOpen) missionControlClose();
       else if (!$("spot").hidden) spotClose();
       else if (!$("settingsDlg").hidden) $("settingsDlg").hidden = true;
     }
@@ -2191,6 +2235,74 @@
       scheduleAmbient();
     }, 180000 + Math.random() * 180000); // every 3-6 minutes
   }
+
+  /* ============ Launchpad (App Dashboard) ============ */
+  var lpOpen = false;
+  function launchpadList() {
+    // every app EXCEPT the core dock apps, plus per-persona installed apps
+    var list = APPS.filter(function (a) { return !a.dock; })
+      .map(function (a) { return { name: a.name, icon: a.icon, hint: a.hint }; });
+    var inst = (state.persona && installed[state.persona.name]) || [];
+    inst.forEach(function (a) {
+      if (!list.some(function (x) { return x.name === a.name; }))
+        list.push({ name: a.name, icon: a.icon, hint: a.hint });
+    });
+    return list;
+  }
+  function launchpadRender() {
+    var grid = $("lpgrid");
+    var q = ($("lpsearch").value || "").trim().toLowerCase();
+    grid.innerHTML = "";
+    var items = launchpadList().filter(function (a) {
+      return !q || a.name.toLowerCase().indexOf(q) >= 0;
+    });
+    if (!items.length) {
+      var e = document.createElement("div"); e.className = "lpempty";
+      e.textContent = "No apps match “" + ($("lpsearch").value || "") + "”";
+      grid.appendChild(e); return;
+    }
+    items.forEach(function (a) {
+      var d = document.createElement("div");
+      d.className = "lpapp";
+      d.innerHTML = "<div class='lpic'>" + esc(a.icon) + "</div>" +
+                    "<div class='lpname'>" + esc(a.name) + "</div>";
+      d.addEventListener("click", function () {
+        launchpadClose();
+        openApp(a.name, a.icon, a.hint);
+      });
+      grid.appendChild(d);
+    });
+  }
+  function launchpadOpen() {
+    if (!state.persona) return;
+    if (lpOpen) { launchpadClose(); return; }
+    lpOpen = true;
+    var lp = $("launchpad");
+    lp.hidden = false; lp.classList.remove("closing");
+    $("lpsearch").value = "";
+    launchpadRender();
+    setTimeout(function () { $("lpsearch").focus(); }, 30);
+  }
+  function launchpadClose() {
+    if (!lpOpen) return;
+    lpOpen = false;
+    var lp = $("launchpad");
+    lp.classList.add("closing");
+    setTimeout(function () { lp.hidden = true; lp.classList.remove("closing"); }, 180);
+  }
+  $("lpsearch").addEventListener("input", launchpadRender);
+  $("lpsearch").addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { e.preventDefault(); launchpadClose(); return; }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      var first = $("lpgrid").querySelector(".lpapp");
+      if (first) first.click();
+    }
+  });
+  // click on the dimmed backdrop (not a tile/search) closes Launchpad
+  $("launchpad").addEventListener("click", function (e) {
+    if (e.target === $("launchpad")) launchpadClose();
+  });
 
   /* ============ Spotlight ============ */
   var spotSel = 0, spotItems = [];
