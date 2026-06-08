@@ -46,6 +46,10 @@ or set `ANTHROPIC_API_KEY` in the environment instead).
 
 - **wibe.fs** — a real persistent file system, per persona: save a note in
   Notes, find it in Finder, open it in TextEdit. Survives reboots.
+- **Launchpad** — the dock keeps only the **Core 6** (Finder, Jungle, Notes,
+  Mail, Messages, Settings) to stay uncluttered; the 🚀 dock icon (or **F4**)
+  opens a full-screen App Dashboard with every app — core, App Store, and
+  installed — plus a type-to-filter box. Click an icon to launch and close.
 - **Spotlight** — Cmd+K (or 🔍 in the menu bar): launch any app, open any
   file, or imagine anything on the spot.
 - **Notifications** — apps call wibe.notify(), and every few minutes the
@@ -78,7 +82,7 @@ it. Log out via the  menu.
 - Option-click a dock icon (or View → Re-imagine) to force a fresh hallucination
   instead of the cached version.
 - Menu bar, window dragging/minimize/zoom, Cmd+W close — all local and instant.
-- `Ctrl+↑` Mission Control, `Cmd+Shift+3` screenshot, `Cmd+K` Spotlight.
+- `Ctrl+↑` Mission Control, `F4` Launchpad, `Cmd+Shift+3` screenshot, `Cmd+K` Spotlight.
 - `Cmd+R` reboots. `Cmd+Ctrl+F` for full screen — recommended for the illusion.
 - Right-click → Inspect Element works for debugging the generated HTML.
 - Camera/photo-booth apps use your real webcam (macOS will ask once). For the
