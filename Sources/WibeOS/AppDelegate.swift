@@ -373,6 +373,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             } else {
                 push("window.wibeos.prefsLoaded({})")
             }
+        case "screenshot":
+            // Cmd+Shift+3: snapshot the whole hallucinated desktop and let the
+            // user save the PNG out "to reality".
+            let name = obj["name"] as? String ?? "wibeOS-screenshot.png"
+            DispatchQueue.main.async {
+                let cfg = WKSnapshotConfiguration()
+                self.webView.takeSnapshot(with: cfg) { image, _ in
+                    guard let image = image,
+                          let tiff = image.tiffRepresentation,
+                          let rep = NSBitmapImageRep(data: tiff),
+                          let png = rep.representation(using: .png, properties: [:])
+                    else {
+                        self.push("window.wibeos.shotDone(false)")
+                        return
+                    }
+                    let panel = NSSavePanel()
+                    panel.title = "Save Screenshot to Reality"
+                    panel.nameFieldStringValue = name
+                    panel.canCreateDirectories = true
+                    if panel.runModal() == .OK, let url = panel.url {
+                        try? png.write(to: url)
+                        self.push("window.wibeos.shotDone(true)")
+                    } else {
+                        self.push("window.wibeos.shotDone(false)")
+                    }
+                }
+            }
         default:
             break
         }

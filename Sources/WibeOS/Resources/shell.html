@@ -233,11 +233,49 @@
   #bbar { width: 230px; height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden; }
   #bfill { height: 100%; width: 2%; background: #fff; border-radius: 3px; transition: width 1.1s ease; }
   #btag { font-size: 13px; color: #888; }
+
+  /* ===== Desktop clock/date widget ===== */
+  #dwidget { position: fixed; top: 64px; right: 28px; z-index: 2; text-align: right;
+    color: #fff; text-shadow: 0 2px 18px rgba(0,0,0,.55); pointer-events: none;
+    font-feature-settings: "tnum"; user-select: none; opacity: 0; transition: opacity .6s; }
+  #dwidget.show { opacity: .92; }
+  #dwTime { font-size: 58px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
+  #dwDate { font-size: 16px; font-weight: 500; margin-top: 6px; opacity: .85; }
+
+  /* ===== Mission Control overview ===== */
+  #mctrl { position: fixed; inset: 0; z-index: 4000; display: none;
+    background: rgba(8,10,16,.62); -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    backdrop-filter: blur(22px) saturate(1.2); opacity: 0; transition: opacity .22s; }
+  #mctrl.show { display: block; opacity: 1; }
+  #mcTitle { position: absolute; top: 26px; left: 0; right: 0; text-align: center;
+    color: #fff; font-size: 14px; font-weight: 600; letter-spacing: .3px; opacity: .8; }
+  #mcGrid { position: absolute; inset: 78px 56px 56px; display: flex; flex-wrap: wrap;
+    gap: 30px; align-content: center; justify-content: center; }
+  .mcTile { position: relative; border-radius: 12px; overflow: hidden; cursor: pointer;
+    box-shadow: 0 14px 40px rgba(0,0,0,.5); border: 2px solid transparent;
+    background: #fff; transition: transform .16s ease, border-color .16s ease;
+    transform: scale(.96); animation: mcPop .26s ease forwards; }
+  @keyframes mcPop { from { transform: scale(.86); opacity: 0; } to { transform: scale(.96); opacity: 1; } }
+  .mcTile:hover { transform: scale(1.02); border-color: var(--accent, #2d7dff); }
+  .mcTile .mcShot { width: 100%; height: 100%; pointer-events: none;
+    background: #111; object-fit: cover; }
+  .mcTile .mcCap { position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 10px;
+    background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff;
+    font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  #mcEmpty { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: #fff; opacity: .6; font-size: 15px; flex-direction: column; gap: 10px; }
 </style>
 </head>
 <body>
   <div id="desktop"></div>
+  <div id="dwidget"><div id="dwTime"></div><div id="dwDate"></div></div>
   <div id="dicons"></div>
+
+  <div id="mctrl">
+    <div id="mcTitle">Mission Control</div>
+    <div id="mcGrid"></div>
+  </div>
 
   <div id="menubar">
     <div class="mitem" data-menu="apple" id="appleBtn">🍎</div>
@@ -645,6 +683,24 @@
       hint: "A REAL working terminal. Layout: scrollback div + one visible <input> on the prompt line (autofocus on load AND refocus whenever the window body is clicked; Enter runs the command, up/down arrows walk history). Commands operate on the REAL file system via wibe.fs: ls / ls <dir> (list wibe.fs paths), cat <file> (wibe.fs.read), rm <file> (wibe.fs.remove), touch <file> and echo text > file (wibe.fs.write), cd/pwd (track a cwd string), plus clear, whoami, date, uname, neofetch (wibeOS ASCII art). For any UNKNOWN command, print a dim 'running…' line and call wibe.ai.ask('You are the wibeOS terminal. Output for command: <cmd>') then print the result. Dark theme, monospace, blocky cursor. Test the input wiring mentally — typing MUST work." },
     { name: "App Store", icon: "🛍️", w: 980, h: 640, model: SMART,
       hint: "The wibeOS App Store, tailored entirely to the logged-in persona: featured banner, category chips, grid of 9-12 invented apps THIS persona would crave — emoji icon, name, tagline, star rating, price (Free/$4.99), one funny review quote each. Every card has a Get button: on click call wibe.install(appName, emoji, oneLineAppDescription), then turn the button into Open which calls wibe.open(appName, sameDescription). Static HTML + local JS only." },
+    { name: "Weather", icon: "🌤", w: 460, h: 620, model: SMART,
+      hint: "macOS Weather app for an INVENTED town that fits the persona's world. Top: big current temperature, condition, animated CSS sky (gradient + drifting clouds/sun/rain made purely with CSS keyframes). Below: an hourly strip (next 8 hours, emoji + temp) and a 7-day forecast list (day, icon, hi/lo) — all written as STATIC HTML with plausible invented numbers. A 'Change location' field is data-wibe-enter=\"navigate: respond ONLY with a <wibe-patch select='#wx'> containing the full new weather screen for the typed place\"; wrap the screen in <div id=\"wx\">. Everything else is local. In-character town names." },
+    { name: "World Clock", icon: "🕰", w: 760, h: 460,
+      hint: "World Clock: a grid of 4-6 cities meaningful to the persona, each a circular analog clock drawn with CSS (hands positioned by JS from the city's UTC offset, updated every second with requestAnimationFrame/setInterval) plus a digital time + day/night emoji. A '+ Add city' field lets the user type a city; compute its offset locally from a small built-in lookup (default to a guessed offset for unknown ones) and add a clock — all local JavaScript, NO data-wibe. Keep clocks ticking live." },
+    { name: "Calendar", icon: "📅", w: 900, h: 600,
+      hint: "macOS Calendar, month view. Render the CURRENT real month as a 7-column grid (compute weeks in JS from today's date; highlight today). Seed 6-10 in-character events spread across the month stored in the REAL file system as /Documents/Calendar.json (array of {date:'YYYY-MM-DD', title, time, color}); read on load, tolerate missing/garbled file via try/catch and seed if empty. Clicking a day shows that day's events in a side panel and lets you add one via a small inline form (title + time) that writes back with wibe.fs.write — all LOCAL JavaScript. Prev/next month buttons re-render locally. Color-dot events in cells." },
+    { name: "Maps", icon: "🗺", w: 960, h: 620, model: SMART,
+      hint: "Maps for an INVENTED city fitting the persona. A stylized vector-ish map drawn with CSS (gradient landmass, blue water blocks, thin street lines via repeating-linear-gradient, a few labeled pins as absolutely-positioned emoji+label) inside <div id=\"map\">. A search field is data-wibe-enter=\"navigate: respond ONLY with <wibe-patch select='#map'> redrawing the map centered on the searched place, plus a results list of 3-4 invented spots\". A local 'satellite/standard' toggle swaps the CSS map style with plain JS. Invented street and place names, never real ones." },
+    { name: "Stocks", icon: "📈", w: 880, h: 580,
+      hint: "Stocks app tracking 6-8 INVENTED tickers that fit the persona's world (funny fake companies). Watchlist sidebar: ticker, name, price, % change (green/red). Main pane: a sparkline/line chart for the selected ticker drawn as an inline SVG <polyline> from a locally-generated pseudo-random walk (seed off the ticker so it's stable), a day/week/month range toggle that regenerates the series locally, and a few invented news headlines. Clicking a ticker selects it — ALL local JavaScript, no data-wibe. Numbers invented but plausible." },
+    { name: "Voice Memos", icon: "🎙", w: 460, h: 600,
+      hint: "Voice Memos app. A big record button toggles a fake recording state with a live animated waveform (CSS/JS bars driven by Math.random, growing a timer). On stop, append a memo to a list stored in the REAL file system as /Documents/Memos.json (array of {name, date, length, transcript}); generate an in-character transcript with wibe.ai.ask('one short spoken voice-memo transcript that this persona would record') and a name. Clicking a memo shows its transcript and a (non-functional but pretty) playback scrubber. Seed 3 funny in-character memos on first run. List navigation is LOCAL; only the transcript generation uses wibe.ai." },
+    { name: "Paint", icon: "🎨", w: 820, h: 600,
+      hint: "A working paint app on a <canvas>. Left toolbar: brush, eraser, a color swatch palette (8-10 colors + the OS accent), and a brush-size slider — all wired with local JavaScript pointer events for smooth freehand drawing (track lastX/lastY, draw lineTo on pointermove). Buttons: Clear (wipes canvas) and Save (canvas.toDataURL → append the image to a small in-app 'Saved' strip below the canvas, AND wibe.fs.write('/Photos/painting-<n>.txt','[image] my painting')). White canvas, mac-style chrome. NO data-wibe — every control is local." },
+    { name: "Stickies", icon: "🗒", w: 640, h: 480,
+      hint: "Stickies: a corkboard of small draggable sticky notes in assorted pastel colors. Notes persist in the REAL file system as /Documents/Stickies.json (array of {id, text, color, x, y}); load on start, seed 3 in-character notes if empty. Each note is contenteditable and auto-saves (debounced) via wibe.fs.write; a 'New note' button adds one; an x on each deletes it; notes are draggable (pointer events updating x/y, saved on drop). All LOCAL JavaScript, no data-wibe." },
+    { name: "Arcade", icon: "🕹", w: 720, h: 600, model: SMART,
+      hint: "wibeOS Arcade: a launcher screen listing 3 fully-playable invented mini-games as cards (emoji art, name, tagline). Clicking a card swaps the view to that game, all LOCAL JavaScript — NO data-wibe. Include at least: (1) a reflex/click game, (2) a simple grid puzzle or memory game, (3) a tiny canvas action game (e.g. dodge falling blocks with arrow keys). Each game has a live score, a Game Over state, and a 'Back to Arcade' button. Use WebAudio for tiny blip sounds (resume AudioContext in a click). Make them genuinely fun and actually work — test the input wiring mentally." },
     { name: "Trash", icon: "🗑", w: 540, h: 380,
       hint: "The Trash window: a few comically regrettable deleted files with sizes and dates. Empty Trash works locally with a satisfying poof animation." }
   ];
@@ -1190,6 +1246,9 @@
       if (p && p.settings) settings = p.settings;
       renderLogin();
     },
+    shotDone: function (ok) {
+      if (ok) toast("📸", "Screenshot saved", "Your hallucinated desktop was exported to reality.", null);
+    },
     fsLoaded: function (files) {
       state.fs = Array.isArray(files) ? files : [];
       fsBroadcast();
@@ -1544,6 +1603,77 @@
     bringFront(w);
   }
 
+  /* ============ Mission Control ============ */
+  /* Tiles the live windows into a zoomable overview. We physically move each
+     real .win element into a scaled tile (so the live iframe + its state are
+     preserved) and restore exact geometry when the overview closes. */
+  var mcOpen = false;
+  function missionControl(force) {
+    if (mcOpen && force !== true) { missionControlClose(); return; }
+    if (mcOpen) return;
+    var ws = Object.values(state.wins);
+    var grid = $("mcGrid");
+    grid.innerHTML = "";
+    if (!ws.length) {
+      grid.innerHTML = '<div id="mcEmpty"><div style="font-size:40px">🪟</div>' +
+        '<div>No open windows — open an app from the Dock first.</div></div>';
+    }
+    // choose a tile width so everything fits the available area
+    var n = ws.length || 1;
+    var cols = Math.ceil(Math.sqrt(n));
+    var availW = Math.max(320, window.innerWidth - 112);
+    var tileW = Math.min(420, (availW - (cols - 1) * 30) / cols);
+    mcSaved = [];
+    ws.forEach(function (w) {
+      var rect = w.el.getBoundingClientRect();
+      var winW = rect.width || parseInt(w.el.style.width) || 760;
+      var winH = rect.height || parseInt(w.el.style.height) || 500;
+      var scale = tileW / winW;
+      var tile = document.createElement("div");
+      tile.className = "mcTile";
+      tile.style.width = tileW + "px";
+      tile.style.height = (winH * scale) + "px";
+      // stash the window's live style so we can restore it precisely
+      mcSaved.push({ w: w, cssText: w.el.style.cssText, parent: w.el.parentNode,
+                     mini: w.el.classList.contains("mini") });
+      w.el.classList.remove("mini");
+      w.el.style.cssText = "position:absolute;left:0;top:0;margin:0;" +
+        "width:" + winW + "px;height:" + winH + "px;" +
+        "transform:scale(" + scale + ");transform-origin:top left;" +
+        "pointer-events:none;box-shadow:none;";
+      var holder = document.createElement("div");
+      holder.style.cssText = "position:absolute;inset:0;overflow:hidden;border-radius:10px;";
+      holder.appendChild(w.el);
+      tile.appendChild(holder);
+      var cap = document.createElement("div");
+      cap.className = "mcCap";
+      cap.textContent = w.icon + "  " + w.app;
+      tile.appendChild(cap);
+      tile.addEventListener("click", function (e) {
+        e.stopPropagation();
+        missionControlClose(w);
+      });
+      grid.appendChild(tile);
+    });
+    $("mctrl").classList.add("show");
+    mcOpen = true;
+  }
+  var mcSaved = [];
+  function missionControlClose(focusWin) {
+    if (!mcOpen) return;
+    mcSaved.forEach(function (s) {
+      s.w.el.style.cssText = s.cssText;          // restore exact geometry
+      if (s.mini && (!focusWin || focusWin.id !== s.w.id)) s.w.el.classList.add("mini");
+      winsEl.appendChild(s.w.el);                // back into the windows layer
+    });
+    mcSaved = [];
+    $("mctrl").classList.remove("show");
+    $("mcGrid").innerHTML = "";
+    mcOpen = false;
+    if (focusWin && state.wins[focusWin.id]) restore(focusWin);
+  }
+  $("mctrl").addEventListener("click", function () { missionControlClose(); });
+
   function zoom(w) {
     if (w.zoomed) {
       w.el.style.left = w.zoomed.l; w.el.style.top = w.zoomed.t;
@@ -1632,6 +1762,10 @@
     if (window.WIBE_PREFETCH === false) return;
     pfQueue.length = 0;
     APPS.forEach(function (a) {
+      // only prefetch the core demo dock apps (those in PF_ORDER); the newer
+      // catalog apps (Weather, Maps, Arcade, …) hallucinate lazily on first
+      // open so first-boot cost stays low.
+      if (!PF_ORDER[a.name]) return;
       if (!state.cache[cacheKey(a.name)] && !findGen(a.name)) pfQueue.push(a);
     });
     pfQueue.sort(function (a, b) { return (PF_ORDER[a.name] || 99) - (PF_ORDER[b.name] || 99); });
@@ -1862,7 +1996,10 @@
     if (name === "Window") {
       var items = [
         { l: "Minimize", f: function () { if (f) minimize(f); } },
-        { l: "Zoom", f: function () { if (f) zoom(f); } }
+        { l: "Zoom", f: function () { if (f) zoom(f); } },
+        { sep: 1 },
+        { l: "Mission Control", k: "^↑", f: function () { missionControl(true); } },
+        { l: "Take Screenshot", k: "⌘⇧3", f: function () { takeScreenshot(); } }
       ];
       var ws = Object.values(state.wins);
       if (ws.length) {
@@ -1946,11 +2083,26 @@
     if (e.metaKey && e.key === "w") { e.preventDefault(); var f = front(); if (f) closeWin(f); }
     if (e.metaKey && (e.key === "k" || e.key === " ")) { e.preventDefault(); spotOpen(); }
     if (e.metaKey && e.key === ",") { e.preventDefault(); openSettings(); }
+    // Ctrl+↑ → Mission Control (toggle)
+    if (e.ctrlKey && (e.key === "ArrowUp" || e.key === "Up")) { e.preventDefault(); missionControl(); }
+    // Cmd+Shift+3 → screenshot the hallucinated desktop out "to reality"
+    if (e.metaKey && e.shiftKey && e.key === "3") { e.preventDefault(); takeScreenshot(); }
     if (e.key === "Escape") {
-      if (!$("spot").hidden) spotClose();
+      if (mcOpen) missionControlClose();
+      else if (!$("spot").hidden) spotClose();
       else if (!$("settingsDlg").hidden) $("settingsDlg").hidden = true;
     }
   });
+
+  function takeScreenshot() {
+    var d = new Date();
+    var stamp = d.getFullYear() + "-" +
+      ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2) + " at " +
+      ("0" + d.getHours()).slice(-2) + "." + ("0" + d.getMinutes()).slice(-2) + "." +
+      ("0" + d.getSeconds()).slice(-2);
+    toast("📸", "Capturing…", "Snapshotting your hallucinated desktop.", null);
+    post({ control: "screenshot", name: "wibeOS Screenshot " + stamp + ".png" });
+  }
 
   /* ============ System Settings ============ */
   var settings = { ambient: true };
@@ -2255,9 +2407,21 @@
     var h = d.getHours(), m = d.getMinutes();
     $("clock").textContent = days[d.getDay()] + " " + mons[d.getMonth()] + " " + d.getDate() +
       "  " + h + ":" + (m < 10 ? "0" : "") + m;
+    // live desktop clock/date widget
+    var dwT = $("dwTime"), dwD = $("dwDate");
+    if (dwT && dwD) {
+      var hr12 = h % 12; if (hr12 === 0) hr12 = 12;
+      var ampm = h < 12 ? "AM" : "PM";
+      dwT.textContent = hr12 + ":" + (m < 10 ? "0" : "") + m + " " + ampm;
+      var full = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      var monFull = ["January", "February", "March", "April", "May", "June", "July",
+        "August", "September", "October", "November", "December"];
+      dwD.textContent = full[d.getDay()] + ", " + monFull[d.getMonth()] + " " + d.getDate();
+      $("dwidget").classList.add("show");
+    }
   }
   tick();
-  setInterval(tick, 5000);
+  setInterval(tick, 1000);
 
   /* ============ boot ============ */
   window.addEventListener("load", function () {

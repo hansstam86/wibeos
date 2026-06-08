@@ -11,6 +11,21 @@ computes locally; only actions that need fresh imagination (navigating the fake
 the Jungle browser, etc.) trigger a regeneration. Opened apps are cached, so reopening is
 instant.
 
+## What's new
+
+- **Mission Control** — `Ctrl+↑` (or Window → Mission Control) tiles every open
+  window into a zoomable overview; click a tile to focus it, `Esc` to dismiss.
+  The live iframes keep running while tiled — nothing is re-hallucinated.
+- **Desktop clock widget** — a live clock/date widget sits on the desktop and
+  ticks every second, styled to match the persona's theme.
+- **Screenshot** — `Cmd+Shift+3` snapshots the current screen (via
+  `WKWebView.takeSnapshot`), pings you with a notification, and opens a Save
+  panel to export the PNG out to *reality*. Apps can also call
+  `wibe.screenshot()` from the bridge.
+- **Nine new hallucinated apps** in the App Store catalog: Weather, World Clock,
+  Calendar, Maps, Stocks, Voice Memos, Paint, Stickies, and Arcade — each
+  invented per-persona on first open like everything else.
+
 ## Requirements
 
 - macOS 13+
@@ -63,6 +78,7 @@ it. Log out via the  menu.
 - Option-click a dock icon (or View → Re-imagine) to force a fresh hallucination
   instead of the cached version.
 - Menu bar, window dragging/minimize/zoom, Cmd+W close — all local and instant.
+- `Ctrl+↑` Mission Control, `Cmd+Shift+3` screenshot, `Cmd+K` Spotlight.
 - `Cmd+R` reboots. `Cmd+Ctrl+F` for full screen — recommended for the illusion.
 - Right-click → Inspect Element works for debugging the generated HTML.
 - Camera/photo-booth apps use your real webcam (macOS will ask once). For the
@@ -74,9 +90,11 @@ it. Log out via the  menu.
 - **Persistent cache**: each app is hallucinated once, then stored in
   `~/Library/Application Support/wibeOS/cache` — reopening is instant, even
   across reboots. Option-click a dock icon or View → Re-imagine to regenerate.
-- **Prefetch**: at boot, the dock apps are pre-hallucinated in the background
-  (2 at a time), so most apps are ready before you click. Disable with
-  `WIBEOS_PREFETCH=0` (first boot prefetch costs roughly 8 app generations).
+- **Prefetch**: at boot, the core demo dock apps are pre-hallucinated in the
+  background (2 at a time), so most apps are ready before you click. The newer
+  App Store apps (Weather, Maps, Arcade, …) generate lazily on first open so
+  prefetch cost stays flat. Disable with `WIBEOS_PREFETCH=0` (first boot
+  prefetch costs roughly 8 app generations).
 - **Patch updates**: data-wibe actions (browser navigation, opening an email…)
   return only the changed region as `<wibe-patch select="…">` blocks instead of
   the whole app — a fraction of the tokens, applied live without remounting.
